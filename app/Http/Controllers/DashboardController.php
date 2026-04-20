@@ -12,7 +12,8 @@ class DashboardController extends Controller
 {
     public function index(): View
     {
-        $today = Carbon::now('Asia/Jakarta')->toDateString();
+        $now = Carbon::now('Asia/Jakarta');
+        $today = $now->toDateString();
         $setting = Setting::current();
 
         $totalStudents = Student::query()->count();
@@ -20,14 +21,22 @@ class DashboardController extends Controller
             ->whereDate('date', $today)
             ->count();
 
-        $lateThreshold = Carbon::parse($today.' '.$setting->check_in_time, 'Asia/Jakarta')
-            ->addMinutes($setting->late_tolerance);
+        $lateToday = 0;
 
-        $lateToday = Attendance::query()
-            ->whereDate('date', $today)
-            ->whereNotNull('check_in')
-            ->where('check_in', '>', $lateThreshold)
-            ->count();
+        if ($setting->isSchoolDay($now)) {
+            $checkInTime = $setting->checkInTimeFor($now);
+
+            if ($checkInTime !== null) {
+                $lateThreshold = Carbon::parse($today.' '.$checkInTime, 'Asia/Jakarta')
+                    ->addMinutes($setting->late_tolerance);
+
+                $lateToday = Attendance::query()
+                    ->whereDate('date', $today)
+                    ->whereNotNull('check_in')
+                    ->where('check_in', '>', $lateThreshold)
+                    ->count();
+            }
+        }
 
         $notAttended = max($totalStudents - $presentToday, 0);
 
@@ -36,7 +45,7 @@ class DashboardController extends Controller
             'presentToday' => $presentToday,
             'lateToday' => $lateToday,
             'notAttended' => $notAttended,
-            'refreshedAt' => Carbon::now('Asia/Jakarta')->format('H:i:s'),
+            'refreshedAt' => $now->format('H:i:s'),
         ]);
     }
 }

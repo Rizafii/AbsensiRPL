@@ -2,25 +2,84 @@
 #include <HTTPClient.h>
 #include <Adafruit_Fingerprint.h>
 #include <SPI.h>
-#include <TFT_eSPI.h>
-#define LV_CONF_INCLUDE_SIMPLE
-#include <lvgl.h>
-#if LV_USE_TFT_ESPI && __has_include(<lvgl/src/drivers/display/tft_espi/lv_tft_espi.h>)
-#include <lvgl/src/drivers/display/tft_espi/lv_tft_espi.h>
-#define HAS_LV_TFT_ESPI_BRIDGE 1
-#else
-#define HAS_LV_TFT_ESPI_BRIDGE 0
-#endif
+#include <LovyanGFX.hpp>
 
 // Hardware configuration (fixed, do not change)
 #define FP_RX_PIN 21
 #define FP_TX_PIN 22
 #define FP_BAUDRATE 57600
 #define TOUCH_CS_PIN 13
+#define TFT_MISO_PIN 19
+#define TFT_MOSI_PIN 23
+#define TFT_SCLK_PIN 18
+#define TFT_CS_PIN 15
+#define TFT_DC_PIN 2
+#define TFT_RST_PIN 4
+
+#if defined(VSPI_HOST)
+#define LGFX_SPI_HOST VSPI_HOST
+#elif defined(SPI2_HOST)
+#define LGFX_SPI_HOST SPI2_HOST
+#else
+#error "No suitable SPI host found for LovyanGFX on this target"
+#endif
 
 #define LCD_WIDTH 480
 #define LCD_HEIGHT 320
-#define DRAW_BUF_SIZE (LCD_WIDTH * LCD_HEIGHT / 10 * (LV_COLOR_DEPTH / 8))
+
+class LGFX : public lgfx::LGFX_Device
+{
+    lgfx::Panel_ILI9488 _panel;
+    lgfx::Bus_SPI _bus;
+
+public:
+    LGFX()
+    {
+        {
+            auto cfg = _bus.config();
+            cfg.spi_host = LGFX_SPI_HOST;
+            cfg.spi_mode = 0;
+            cfg.freq_write = 40000000;
+            cfg.freq_read = 16000000;
+            cfg.spi_3wire = false;
+            cfg.use_lock = true;
+            cfg.dma_channel = 1;
+            cfg.pin_sclk = TFT_SCLK_PIN;
+            cfg.pin_mosi = TFT_MOSI_PIN;
+            cfg.pin_miso = TFT_MISO_PIN;
+            cfg.pin_dc = TFT_DC_PIN;
+            _bus.config(cfg);
+            _panel.setBus(&_bus);
+        }
+
+        {
+            auto cfg = _panel.config();
+            cfg.pin_cs = TFT_CS_PIN;
+            cfg.pin_rst = TFT_RST_PIN;
+            cfg.pin_busy = -1;
+
+            cfg.memory_width = LCD_HEIGHT;
+            cfg.memory_height = LCD_WIDTH;
+            cfg.panel_width = LCD_HEIGHT;
+            cfg.panel_height = LCD_WIDTH;
+            cfg.offset_x = 0;
+            cfg.offset_y = 0;
+            cfg.offset_rotation = 0;
+
+            cfg.dummy_read_pixel = 8;
+            cfg.dummy_read_bits = 1;
+            cfg.readable = false;
+            cfg.invert = false;
+            cfg.rgb_order = false;
+            cfg.dlen_16bit = false;
+            cfg.bus_shared = true;
+
+            _panel.config(cfg);
+        }
+
+        setPanel(&_panel);
+    }
+};
 
 const char* WIFI_SSID = "GURU-SMKN6";
 const char* WIFI_PASSWORD = "cerdasbergerak";
@@ -29,7 +88,7 @@ const char* API_TOKEN = "jgk0advefk90gj4ngin4290";
 
 HardwareSerial FingerSerial(2);
 Adafruit_Fingerprint finger(&FingerSerial);
-TFT_eSPI tft = TFT_eSPI();
+LGFX tft;
 
 unsigned long lastScanAt = 0;
 unsigned long lastEnrollPollAt = 0;
@@ -45,8 +104,6 @@ String lcdModeText = "";
 String lcdWifiText = "";
 int lcdLastFingerprintId = -1;
 unsigned long lastUiRefreshAt = 0;
-uint8_t* lvDrawBuf = nullptr;
-lv_display_t* lvDisplay = nullptr;
 
 void initDisplay();
 void drawLcdLayout();
@@ -119,14 +176,8 @@ void loop()
 void initDisplay()
 {
     tft.begin();
+    tft.setColorDepth(16);
     tft.setRotation(1); // 480x320 landscape
-
-#if defined(TFT_BL) && defined(TFT_BACKLIGHT_ON)
-    pinMode(TFT_BL, OUTPUT);
-    digitalWrite(TFT_BL, TFT_BACKLIGHT_ON);
-#endif
-
-    lv_init();
 
     // Quick boot pattern for visual validation that LCD pipeline is alive.
     tft.fillScreen(TFT_RED);
@@ -139,24 +190,10 @@ void initDisplay()
     lcdWidth = tft.width();
     lcdHeight = tft.height();
 
-#if HAS_LV_TFT_ESPI_BRIDGE
-    lvDrawBuf = new uint8_t[DRAW_BUF_SIZE];
-
-    if (lvDrawBuf != nullptr) {
-        lvDisplay = lv_tft_espi_create(LCD_HEIGHT, LCD_WIDTH, lvDrawBuf, DRAW_BUF_SIZE);
-
-        if (lvDisplay != nullptr) {
-            lv_display_set_rotation(lvDisplay, LV_DISPLAY_ROTATION_90);
-        }
-    }
-#endif
-
     drawLcdLayout();
     setModeOnLcd("INIT");
     updateWifiOnLcd();
     updateLastFingerprintOnLcd(-1);
-
-    // Keep existing TFT_eSPI + LVGL flush/input driver setup used in your project.
 }
 
 void drawLcdLayout()

@@ -30,6 +30,13 @@ class AttendanceService
         $today = $now->toDateString();
         $setting = Setting::current();
 
+        if (! $setting->isSchoolDay($now)) {
+            return [
+                'status' => 'error',
+                'message' => 'Absensi hanya tersedia pada hari Senin sampai Jumat.',
+            ];
+        }
+
         return DB::transaction(function () use ($student, $now, $today, $setting): array {
             $attendance = Attendance::query()
                 ->where('student_id', $student->id)
@@ -80,7 +87,13 @@ class AttendanceService
 
     private function resolveArriveStatus(Carbon $now, Setting $setting): string
     {
-        $lateThreshold = Carbon::parse($now->toDateString().' '.$setting->check_in_time, 'Asia/Jakarta')
+        $checkInTime = $setting->checkInTimeFor($now);
+
+        if ($checkInTime === null) {
+            return Attendance::STATUS_ARRIVED;
+        }
+
+        $lateThreshold = Carbon::parse($now->toDateString().' '.$checkInTime, 'Asia/Jakarta')
             ->addMinutes($setting->late_tolerance);
 
         if ($now->greaterThan($lateThreshold)) {
@@ -92,7 +105,13 @@ class AttendanceService
 
     private function resolveDepartureStatus(Carbon $now, Setting $setting): string
     {
-        $earlyLeaveThreshold = Carbon::parse($now->toDateString().' '.$setting->check_out_time, 'Asia/Jakarta')
+        $checkOutTime = $setting->checkOutTimeFor($now);
+
+        if ($checkOutTime === null) {
+            return Attendance::STATUS_DEPARTED;
+        }
+
+        $earlyLeaveThreshold = Carbon::parse($now->toDateString().' '.$checkOutTime, 'Asia/Jakarta')
             ->subMinutes($setting->early_leave_tolerance);
 
         if ($now->lessThan($earlyLeaveThreshold)) {

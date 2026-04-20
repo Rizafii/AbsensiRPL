@@ -1,6 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
-        <h2 class="text-xl font-semibold text-slate-800 leading-tight">
+        <h2 class="text-xl font-semibold leading-tight text-slate-800">
             Pengaturan Absensi
         </h2>
     </x-slot>
@@ -11,32 +11,56 @@
         </x-bladewind::alert>
     @endif
 
-    <div class="max-w-3xl">
+    <div class="max-w-4xl">
         <x-bladewind::card>
-            <form method="POST" action="{{ route('settings.attendance.update') }}" class="space-y-5">
+            <form method="POST" action="{{ route('settings.attendance.update') }}" class="space-y-6">
                 @csrf
                 @method('PUT')
 
-                <div>
-                    <x-bladewind::input
-                        name="check_in_time"
-                        label="Jam Masuk"
-                        type="time"
-                        value="{{ old('check_in_time', \Carbon\Carbon::parse($setting->check_in_time)->format('H:i')) }}"
-                        required="true"
-                    />
-                    <x-input-error :messages="$errors->get('check_in_time')" class="mt-2" />
-                </div>
+                <p class="text-sm text-slate-600">
+                    Atur jam masuk dan jam pulang khusus hari belajar Senin sampai Jumat.
+                </p>
 
-                <div>
-                    <x-bladewind::input
-                        name="check_out_time"
-                        label="Jam Pulang"
-                        type="time"
-                        value="{{ old('check_out_time', \Carbon\Carbon::parse($setting->check_out_time)->format('H:i')) }}"
-                        required="true"
-                    />
-                    <x-input-error :messages="$errors->get('check_out_time')" class="mt-2" />
+                @php
+                    $schoolDays = [
+                        'monday' => 'Senin',
+                        'tuesday' => 'Selasa',
+                        'wednesday' => 'Rabu',
+                        'thursday' => 'Kamis',
+                        'friday' => 'Jumat',
+                    ];
+                @endphp
+
+                <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    @foreach ($schoolDays as $day => $label)
+                        <div class="rounded-lg border border-slate-200 p-4">
+                            <h3 class="text-sm font-semibold text-slate-800">{{ $label }}</h3>
+
+                            <div class="mt-4 grid grid-cols-1 gap-4">
+                                <div>
+                                    <x-bladewind::input
+                                        name="{{ $day }}_check_in_time"
+                                        label="Jam Masuk"
+                                        type="time"
+                                        value="{{ old($day.'_check_in_time', \Carbon\Carbon::parse($setting->{$day.'_check_in_time'} ?? $setting->check_in_time)->format('H:i')) }}"
+                                        required="true"
+                                    />
+                                    <x-input-error :messages="$errors->get($day.'_check_in_time')" class="mt-2" />
+                                </div>
+
+                                <div>
+                                    <x-bladewind::input
+                                        name="{{ $day }}_check_out_time"
+                                        label="Jam Pulang"
+                                        type="time"
+                                        value="{{ old($day.'_check_out_time', \Carbon\Carbon::parse($setting->{$day.'_check_out_time'} ?? $setting->check_out_time)->format('H:i')) }}"
+                                        required="true"
+                                    />
+                                    <x-input-error :messages="$errors->get($day.'_check_out_time')" class="mt-2" />
+                                </div>
+                            </div>
+                        </div>
+                    @endforeach
                 </div>
 
                 <div>
