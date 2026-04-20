@@ -29,8 +29,8 @@
             <x-bladewind::table striped="true" divider="thin" hover="true">
                 <x-slot name="header">
                     <th>Nama Siswa</th>
-                    <th>Check In</th>
-                    <th>Check Out</th>
+                    <th>Masuk</th>
+                    <th>Pulang</th>
                     <th class="text-center">Status</th>
                 </x-slot>
 

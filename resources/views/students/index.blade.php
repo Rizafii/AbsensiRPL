@@ -7,9 +7,7 @@
                 <p class="text-sm text-slate-500">Kelola data siswa dan pendaftaran sidik jari.</p>
             </div>
             <a href="{{ route('students.create') }}">
-                <x-bladewind::button 
-                    size="small" 
-                    icon="plus" 
+                <x-bladewind::button size="small" icon="plus"
                     class="!rounded-xl shadow-sm hover:shadow-md transition-all">
                     Tambah Siswa
                 </x-bladewind::button>
@@ -29,7 +27,7 @@
                     <th class="!text-xs !font-bold !uppercase !tracking-wider text-slate-400">Siswa</th>
                     <th class="!text-xs !font-bold !uppercase !tracking-wider text-slate-400">NIS</th>
                     <th class="!text-xs !font-bold !uppercase !tracking-wider text-slate-400">Fingerprint</th>
-                    <th class="!text-xs !font-bold !uppercase !tracking-wider text-slate-400 text-right">Aksi</th>
+                    <th class="!text-xs !font-bold !uppercase !tracking-wider text-slate-400 text-right pr-12">Aksi</th>
                 </x-slot>
 
                 @forelse ($students as $student)
@@ -37,7 +35,8 @@
                         <td class="py-5 pl-6">
                             <div class="flex flex-col">
                                 <span class="font-semibold text-slate-700 tracking-tight">{{ $student->name }}</span>
-                                <span class="text-[10px] text-slate-400 font-medium tracking-wide">Siswa Rekayasa Perangkat Lunak</span>
+                                <span class="text-[10px] text-slate-400 font-medium tracking-wide">Siswa Rekayasa Perangkat
+                                    Lunak</span>
                             </div>
                         </td>
                         <td class="py-5">
@@ -45,49 +44,41 @@
                         </td>
                         <td class="py-5">
                             <div class="flex items-center gap-2">
-                                <div class="h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"></div>
-                                <span class="text-[11px] font-bold text-slate-400 tracking-tighter">ID: {{ $student->fingerprint_id }}</span>
+                                <div class="h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]">
+                                </div>
+                                <span class="text-[11px] font-bold text-slate-400 tracking-tighter">ID:
+                                    {{ $student->fingerprint_id }}</span>
                             </div>
                         </td>
                         <td class="py-4 pr-6 text-right">
-                            <div class="flex items-center justify-end gap-2">
+                            <div class="flex items-center justify-start gap-2">
                                 {{-- Edit Action --}}
                                 <a href="{{ route('students.edit', $student) }}">
-                                    <x-bladewind::button 
-                                        size="tiny" 
-                                        type="secondary" 
-                                        icon="pencil-square"
-                                        color="amber"
-                                        class="!h-9 !w-9 !p-0"
-                                        title="Edit"
-                                    />
+                                    <x-bladewind::button size="tiny" color="yellow"
+                                        class="!h-9 !w-9 !p-0 !flex !items-center !justify-center !rounded-xl shadow-sm"
+                                        title="Edit">
+                                        <x-bladewind::icon name="pencil-square" class="!h-5 !w-5 !m-0" />
+                                    </x-bladewind::button>
                                 </a>
 
-                                {{-- Fingerprint Action --}}
+                                {{-- Fingerprint Action (Show) --}}
                                 <a href="{{ route('enroll.index', ['fingerprint_id' => $student->fingerprint_id]) }}">
-                                    <x-bladewind::button 
-                                        size="tiny" 
-                                        color="blue" 
-                                        icon="finger-print"
-                                        class="!h-9 !w-9 !p-0"
-                                        title="Pindai"
-                                    />
+                                    <x-bladewind::button size="tiny" color="blue"
+                                        class="!h-9 !w-9 !p-0 !flex !items-center !justify-center !rounded-xl shadow-sm"
+                                        title="Pindai">
+                                        <x-bladewind::icon name="finger-print" class="!h-5 !w-5 !m-0" />
+                                    </x-bladewind::button>
                                 </a>
 
                                 {{-- Delete Action --}}
                                 <form method="POST" action="{{ route('students.destroy', $student) }}" class="inline">
                                     @csrf
                                     @method('DELETE')
-                                    <x-bladewind::button 
-                                        can_submit="true"
-                                        size="tiny" 
-                                        color="red" 
-                                        icon="trash" 
-                                        type="secondary"
-                                        class="!h-9 !w-9 !p-0"
-                                        onclick="return confirm('Hapus siswa ini?');"
-                                        title="Hapus"
-                                    />
+                                    <x-bladewind::button can_submit="true" size="tiny" color="red"
+                                        class="!h-9 !w-9 !p-0 !flex !items-center !justify-center !rounded-xl shadow-sm"
+                                        onclick="return confirm('Hapus siswa ini?');" title="Hapus">
+                                        <x-bladewind::icon name="trash" class="!h-5 !w-5 !m-0" />
+                                    </x-bladewind::button>
                                 </form>
                             </div>
                         </td>
