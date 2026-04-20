@@ -1,78 +1,90 @@
 <x-app-layout>
     <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+        <h2 class="text-xl font-semibold text-slate-800 leading-tight">
             Enroll Sidik Jari
         </h2>
     </x-slot>
 
-    <div class="py-8">
-        <div class="mx-auto max-w-7xl space-y-4 sm:px-6 lg:px-8">
-            <div class="rounded-xl bg-white p-6 shadow-sm ring-1 ring-gray-100">
-                <p class="mb-4 text-sm text-gray-600">
-                    Klik tombol Pindai Sidik Jari untuk mengirim perintah enroll ke ESP32 melalui endpoint API.
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {{-- Enroll Form --}}
+        <div class="lg:col-span-1">
+            <x-bladewind::card title="Pindai Baru" shadow="true">
+                <p class="text-sm text-slate-500 mb-6">
+                    Masukkan Fingerprint ID dan klik tombol di bawah untuk memulai proses pemindaian pada alat ESP32.
                 </p>
 
-                <form id="enroll-form" class="flex flex-wrap items-end gap-3">
-                    <div>
-                        <x-input-label for="fingerprint_id" :value="__('Fingerprint ID')" />
-                        <x-text-input
-                            id="fingerprint_id"
-                            name="fingerprint_id"
-                            type="number"
-                            min="1"
-                            class="mt-1 block"
-                            value="{{ request('fingerprint_id') }}"
-                            required
-                        />
-                    </div>
+                <form id="enroll-form" class="space-y-4">
+                    <x-bladewind::input
+                        name="fingerprint_id"
+                        label="Fingerprint ID"
+                        placeholder="Contoh: 1"
+                        type="number"
+                        numeric="true"
+                        id="fingerprint_id"
+                        value="{{ request('fingerprint_id') }}"
+                        required="true"
+                        prefix-icon="identification"
+                    />
 
-                    <button
-                        type="submit"
-                        class="inline-flex items-center rounded-md bg-blue-600 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-white transition hover:bg-blue-700"
+                    <x-bladewind::button
+                        can_submit="true"
+                        class="w-full"
+                        icon="finger-print"
                     >
                         Pindai Sidik Jari
-                    </button>
+                    </x-bladewind::button>
                 </form>
 
-                <div id="enroll-message" class="mt-4 hidden rounded-lg px-4 py-3 text-sm"></div>
-            </div>
+                <div id="enroll-message" class="mt-4 hidden rounded-xl px-4 py-3 text-sm font-medium transition-all duration-300"></div>
+            </x-bladewind::card>
 
-            <div class="overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-gray-100">
-                <div class="border-b border-gray-100 px-4 py-3">
-                    <h3 class="font-semibold text-gray-800">Riwayat Enroll Terbaru</h3>
-                </div>
-
-                <div class="overflow-x-auto">
-                    <table class="min-w-full divide-y divide-gray-200 text-sm">
-                        <thead class="bg-gray-50">
-                            <tr>
-                                <th class="px-4 py-3 text-left font-semibold text-gray-700">Fingerprint ID</th>
-                                <th class="px-4 py-3 text-left font-semibold text-gray-700">Status</th>
-                                <th class="px-4 py-3 text-left font-semibold text-gray-700">Waktu</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-100 bg-white">
-                            @forelse ($enrollRequests as $enrollRequest)
-                                <tr>
-                                    <td class="px-4 py-3 text-gray-900">{{ $enrollRequest->fingerprint_id }}</td>
-                                    <td class="px-4 py-3">
-                                        <span class="inline-flex rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wider {{ $enrollRequest->status === 'pending' ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700' }}">
-                                            {{ $enrollRequest->status }}
-                                        </span>
-                                    </td>
-                                    <td class="px-4 py-3 text-gray-700">{{ $enrollRequest->created_at?->timezone('Asia/Jakarta')->format('d-m-Y H:i:s') }}</td>
-                                </tr>
-                            @empty
-                                <tr>
-                                    <td colspan="3" class="px-4 py-6 text-center text-gray-500">
-                                        Belum ada permintaan enroll.
-                                    </td>
-                                </tr>
-                            @endforelse
-                        </tbody>
-                    </table>
-                </div>
+            <div class="mt-6">
+                <x-bladewind::alert
+                    type="info"
+                    show_close_icon="false"
+                    show_icon="true"
+                >
+                    Pastikan ESP32 dalam keadaan Online sebelum menekan tombol pindai.
+                </x-bladewind::alert>
             </div>
+        </div>
+
+        {{-- History Table --}}
+        <div class="lg:col-span-2">
+            <x-bladewind::card title="Riwayat Enroll Terbaru" shadow="true">
+                <x-bladewind::table striped="true" divider="thin" hover="true">
+                    <x-slot name="header">
+                        <th>ID Jari</th>
+                        <th>Status</th>
+                        <th>Waktu Request</th>
+                    </x-slot>
+
+                    @forelse ($enrollRequests as $enrollRequest)
+                        <tr class="hover:bg-slate-50">
+                            <td class="font-semibold text-slate-700">#{{ $enrollRequest->fingerprint_id }}</td>
+                            <td>
+                                <x-bladewind::tag
+                                    label="{{ strtoupper($enrollRequest->status) }}"
+                                    color="{{ $enrollRequest->status === 'pending' ? 'orange' : 'green' }}"
+                                    shade="faint"
+                                />
+                            </td>
+                            <td class="text-slate-500 text-sm">
+                                {{ $enrollRequest->created_at?->timezone('Asia/Jakarta')->format('d M Y, H:i') }}
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="3" class="text-center text-slate-400 py-12">
+                                <div class="flex flex-col items-center">
+                                    <x-bladewind::icon name="document-magnifying-glass" class="h-10 w-10 mb-2 opacity-20" />
+                                    <span>Belum ada permintaan enroll.</span>
+                                </div>
+                            </td>
+                        </tr>
+                    @endforelse
+                </x-bladewind::table>
+            </x-bladewind::card>
         </div>
     </div>
 
