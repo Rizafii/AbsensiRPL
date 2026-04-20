@@ -2,93 +2,25 @@
 #include <HTTPClient.h>
 #include <Adafruit_Fingerprint.h>
 #include <SPI.h>
-#include <LovyanGFX.hpp>
+#include <TFT_eSPI.h>
 
 // Hardware configuration (fixed, do not change)
 #define FP_RX_PIN 21
 #define FP_TX_PIN 22
 #define FP_BAUDRATE 57600
-#define TOUCH_CS_PIN 13
-#define TFT_MISO_PIN 19
-#define TFT_MOSI_PIN 23
-#define TFT_SCLK_PIN 18
-#define TFT_CS_PIN 15
-#define TFT_DC_PIN 2
-#define TFT_RST_PIN 4
-
-#if defined(VSPI_HOST)
-#define LGFX_SPI_HOST VSPI_HOST
-#elif defined(SPI2_HOST)
-#define LGFX_SPI_HOST SPI2_HOST
-#else
-#error "No suitable SPI host found for LovyanGFX on this target"
-#endif
+#define TFT_BACKLIGHT_ON HIGH
 
 #define LCD_WIDTH 480
 #define LCD_HEIGHT 320
 
-class LGFX : public lgfx::LGFX_Device
-{
-    lgfx::Panel_ILI9488 _panel;
-    lgfx::Bus_SPI _bus;
-
-public:
-    LGFX()
-    {
-        {
-            auto cfg = _bus.config();
-            cfg.spi_host = LGFX_SPI_HOST;
-            cfg.spi_mode = 0;
-            cfg.freq_write = 40000000;
-            cfg.freq_read = 16000000;
-            cfg.spi_3wire = false;
-            cfg.use_lock = true;
-            cfg.dma_channel = 1;
-            cfg.pin_sclk = TFT_SCLK_PIN;
-            cfg.pin_mosi = TFT_MOSI_PIN;
-            cfg.pin_miso = TFT_MISO_PIN;
-            cfg.pin_dc = TFT_DC_PIN;
-            _bus.config(cfg);
-            _panel.setBus(&_bus);
-        }
-
-        {
-            auto cfg = _panel.config();
-            cfg.pin_cs = TFT_CS_PIN;
-            cfg.pin_rst = TFT_RST_PIN;
-            cfg.pin_busy = -1;
-
-            cfg.memory_width = LCD_HEIGHT;
-            cfg.memory_height = LCD_WIDTH;
-            cfg.panel_width = LCD_HEIGHT;
-            cfg.panel_height = LCD_WIDTH;
-            cfg.offset_x = 0;
-            cfg.offset_y = 0;
-            cfg.offset_rotation = 0;
-
-            cfg.dummy_read_pixel = 8;
-            cfg.dummy_read_bits = 1;
-            cfg.readable = false;
-            cfg.invert = false;
-            cfg.rgb_order = false;
-            cfg.dlen_16bit = false;
-            cfg.bus_shared = true;
-
-            _panel.config(cfg);
-        }
-
-        setPanel(&_panel);
-    }
-};
-
-const char* WIFI_SSID = "GURU-SMKN6";
-const char* WIFI_PASSWORD = "cerdasbergerak";
-const char* API_BASE_URL = "http://10.0.0.54:8000";
+const char* WIFI_SSID = "RPL";
+const char* WIFI_PASSWORD = "rplviska6";
+const char* API_BASE_URL = "http://192.168.13.3:8000";
 const char* API_TOKEN = "jgk0advefk90gj4ngin4290";
 
 HardwareSerial FingerSerial(2);
 Adafruit_Fingerprint finger(&FingerSerial);
-LGFX tft;
+TFT_eSPI tft = TFT_eSPI();
 
 unsigned long lastScanAt = 0;
 unsigned long lastEnrollPollAt = 0;
@@ -176,7 +108,7 @@ void loop()
 void initDisplay()
 {
     tft.begin();
-    tft.setColorDepth(16);
+
     tft.setRotation(1); // 480x320 landscape
 
     // Quick boot pattern for visual validation that LCD pipeline is alive.
