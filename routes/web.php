@@ -4,6 +4,7 @@ use App\Http\Controllers\AttendanceReportController;
 use App\Http\Controllers\AttendanceSettingController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EnrollController;
+use App\Http\Controllers\FonnteSettingController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\StudentController;
 use Illuminate\Support\Facades\Route;
@@ -21,6 +22,11 @@ Route::middleware('auth')->group(function () {
     Route::put('/settings/attendance', [AttendanceSettingController::class, 'update'])
         ->name('settings.attendance.update');
 
+    Route::get('/settings/fonnte', [FonnteSettingController::class, 'edit'])
+        ->name('settings.fonnte.edit');
+    Route::put('/settings/fonnte', [FonnteSettingController::class, 'update'])
+        ->name('settings.fonnte.update');
+
     Route::get('/reports/attendance', [AttendanceReportController::class, 'index'])
         ->name('reports.attendance');
 
@@ -31,4 +37,4 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
 
-require __DIR__.'/auth.php';
+require __DIR__ . '/auth.php';

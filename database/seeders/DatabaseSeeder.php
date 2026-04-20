@@ -25,6 +25,7 @@ class DatabaseSeeder extends Seeder
 
         $this->call([
             SettingSeeder::class,
+            FonnteAccountSeeder::class,
             // StudentSeeder::class,
         ]);
     }

@@ -10,6 +10,8 @@ use Illuminate\Support\Facades\DB;
 
 class AttendanceService
 {
+    public function __construct(private readonly FonnteService $fonnteService) {}
+
     /**
      * @return array{status: string, message: string, student_name?: string, attendance_status?: string}
      */
@@ -37,7 +39,12 @@ class AttendanceService
             ];
         }
 
-        return DB::transaction(function () use ($student, $now, $today, $setting): array {
+        /** @var array{student_name: string, check_in_at: Carbon, status: string}|null $checkInNotification */
+        $checkInNotification = null;
+        /** @var array{student_name: string, check_out_at: Carbon, status: string}|null $checkOutNotification */
+        $checkOutNotification = null;
+
+        $result = DB::transaction(function () use ($student, $now, $today, $setting, &$checkInNotification, &$checkOutNotification): array {
             $attendance = Attendance::query()
                 ->where('student_id', $student->id)
                 ->whereDate('date', $today)
@@ -53,6 +60,12 @@ class AttendanceService
                     'check_in' => $now,
                     'status' => $status,
                 ]);
+
+                $checkInNotification = [
+                    'student_name' => $student->name,
+                    'check_in_at' => $now->copy(),
+                    'status' => $status,
+                ];
 
                 return [
                     'status' => 'success',
@@ -70,6 +83,12 @@ class AttendanceService
                     'status' => $status,
                 ]);
 
+                $checkOutNotification = [
+                    'student_name' => $student->name,
+                    'check_out_at' => $now->copy(),
+                    'status' => $status,
+                ];
+
                 return [
                     'status' => 'success',
                     'message' => 'Absensi pulang berhasil disimpan.',
@@ -83,6 +102,24 @@ class AttendanceService
                 'message' => 'Absensi hari ini sudah lengkap.',
             ];
         });
+
+        if ($checkInNotification !== null) {
+            $this->fonnteService->sendParentGroupCheckInMessage(
+                $checkInNotification['student_name'],
+                $checkInNotification['check_in_at'],
+                $checkInNotification['status'],
+            );
+        }
+
+        if ($checkOutNotification !== null) {
+            $this->fonnteService->sendParentGroupCheckOutMessage(
+                $checkOutNotification['student_name'],
+                $checkOutNotification['check_out_at'],
+                $checkOutNotification['status'],
+            );
+        }
+
+        return $result;
     }
 
     private function resolveArriveStatus(Carbon $now, Setting $setting): string
