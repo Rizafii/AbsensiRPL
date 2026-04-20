@@ -1,57 +1,46 @@
 @csrf
 
-<div class="space-y-5">
+<div class="space-y-4">
     <div>
-        <x-input-label for="name" :value="__('Nama Siswa')" />
-        <x-text-input
-            id="name"
+        <x-bladewind::input
             name="name"
-            type="text"
-            class="mt-1 block w-full"
-            :value="old('name', $student->name ?? '')"
-            required
-            autofocus
+            label="Nama Siswa"
+            required="true"
+            value="{{ old('name', $student->name ?? '') }}"
+            error_message="{{ $errors->first('name') }}"
         />
-        <x-input-error :messages="$errors->get('name')" class="mt-2" />
     </div>
 
     <div>
-        <x-input-label for="nis" :value="__('NIS')" />
-        <x-text-input
-            id="nis"
+        <x-bladewind::input
             name="nis"
-            type="text"
-            class="mt-1 block w-full"
-            :value="old('nis', $student->nis ?? '')"
-            required
+            label="NIS"
+            required="true"
+            value="{{ old('nis', $student->nis ?? '') }}"
+            error_message="{{ $errors->first('nis') }}"
         />
-        <x-input-error :messages="$errors->get('nis')" class="mt-2" />
     </div>
 
     <div>
-        <x-input-label for="fingerprint_id" :value="__('Fingerprint ID')" />
-        <x-text-input
-            id="fingerprint_id"
+        <x-bladewind::input
             name="fingerprint_id"
+            label="Fingerprint ID"
             type="number"
-            min="1"
-            class="mt-1 block w-full"
-            :value="old('fingerprint_id', $student->fingerprint_id ?? '')"
-            required
+            required="true"
+            value="{{ old('fingerprint_id', $student->fingerprint_id ?? '') }}"
+            error_message="{{ $errors->first('fingerprint_id') }}"
         />
-        <x-input-error :messages="$errors->get('fingerprint_id')" class="mt-2" />
     </div>
 
-    <div class="flex items-center gap-3">
-        <x-primary-button>
+    <div class="flex items-center gap-3 pt-2">
+        <x-bladewind::button can_submit="true" type="primary">
             {{ $submitLabel }}
-        </x-primary-button>
+        </x-bladewind::button>
 
-        <a
-            href="{{ route('students.index') }}"
-            class="inline-flex items-center rounded-md border border-gray-300 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-gray-700 transition hover:bg-gray-100"
-        >
-            Batal
+        <a href="{{ route('students.index') }}">
+            <x-bladewind::button type="secondary" color="gray">
+                Batal
+            </x-bladewind::button>
         </a>
     </div>
 </div>
