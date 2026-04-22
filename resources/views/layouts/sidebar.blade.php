@@ -8,7 +8,7 @@
 @endphp
 
 <aside @sidebar-toggle.window="mobileOpen = !mobileOpen"
-    class="fixed inset-y-0 left-0 z-50 flex flex-col w-64 bg-white border-r border-slate-200 text-slate-600 transition-transform duration-300 transform lg:translate-x-0"
+    class="fixed inset-y-0 left-0 z-[99] flex flex-col w-64 bg-white border-r border-slate-200 text-slate-600 transition-transform duration-300 transform lg:translate-x-0"
     :class="mobileOpen ? 'translate-x-0' : '-translate-x-full'" id="sidebar">
     {{-- Logo / Brand --}}
     <div class="relative flex h-48 items-center justify-center px-2 border-b border-slate-100">
