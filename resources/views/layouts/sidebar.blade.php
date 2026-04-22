@@ -7,8 +7,10 @@
     $homeRoute = $isStudent ? route('student.attendance.dashboard') : route('dashboard');
 @endphp
 
-<aside x-data="{ mobileOpen: false }" @sidebar-toggle.window="mobileOpen = !mobileOpen"
-    class="fixed inset-y-0 left-0 z-30 flex flex-col w-64 bg-white border-r border-slate-200 text-slate-600 transition-all duration-300"
+<aside x-data="{ mobileOpen: false }" 
+    @sidebar-toggle.window="mobileOpen = !mobileOpen"
+    class="fixed inset-y-0 left-0 z-50 flex flex-col w-64 bg-white border-r border-slate-200 text-slate-600 shadow-2xl transition-transform duration-300 transform lg:translate-x-0"
+    :class="mobileOpen ? 'translate-x-0' : '-translate-x-full'"
     id="sidebar">
     {{-- Logo / Brand --}}
     <div class="relative flex h-48 items-center justify-center px-2 border-b border-slate-100">
@@ -16,6 +18,12 @@
             <img src="{{ asset('assets/Logo.png') }}" alt="Logo"
                 class="h-40 w-full object-contain transition-all duration-300">
         </a>
+        {{-- Close button for mobile --}}
+        <button @click="mobileOpen = false" class="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-600 lg:hidden">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+        </button>
     </div>
 
     {{-- Navigation --}}
@@ -159,7 +167,7 @@
 </aside>
 
 {{-- Mobile Overlay --}}
-<div x-show="mobileOpen" @click="mobileOpen = false" class="fixed inset-0 z-20 bg-black/50 lg:hidden"
+<div x-show="mobileOpen" x-cloak @click="mobileOpen = false" class="fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-sm lg:hidden"
     x-transition:enter="transition-opacity duration-300" x-transition:enter-start="opacity-0"
     x-transition:enter-end="opacity-100" x-transition:leave="transition-opacity duration-300"
     x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"></div>
