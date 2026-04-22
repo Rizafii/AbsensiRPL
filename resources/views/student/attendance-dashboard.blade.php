@@ -26,14 +26,18 @@
                 </div>
                 <span
                     class="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold {{ $setting->backup_attendance_enabled ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700' }}">
-                    {{ $setting->backup_attendance_enabled ? 'Absensi Cadangan Aktif' : 'Absensi Cadangan Nonaktif' }}
+                    {{ $setting->backup_attendance_enabled ? 'Absensi Aktif' : 'Absensi Nonaktif' }}
                 </span>
             </div>
         </x-bladewind::card>
 
         @if ($setting->backup_attendance_enabled)
             <x-bladewind::card class="!p-6 border-slate-200 shadow-sm">
-                <h3 class="text-lg font-semibold text-slate-800">Absensi Cadangan</h3>
+                @php
+                    $isTodayAttendanceCompleted = $todayAttendance?->check_in !== null && $todayAttendance?->check_out !== null;
+                @endphp
+
+                <h3 class="text-lg font-semibold text-slate-800">Absensi</h3>
                 <p class="mt-1 text-sm text-slate-600">
                     Sistem akan mengambil lokasi Anda secara otomatis dan mencocokkan wajah Anda sebelum absensi dikirim.
                     Pastikan Anda berada dalam radius maksimal
@@ -47,7 +51,7 @@
                             <div class="space-y-2">
                                 <p class="text-sm font-semibold">Template wajah belum terdaftar.</p>
                                 <p class="text-sm">
-                                    Sebelum absensi cadangan, lakukan pendaftaran wajah satu kali menggunakan kamera perangkat Anda.
+                                    Sebelum Absensi, lakukan pendaftaran wajah satu kali menggunakan kamera perangkat Anda.
                                 </p>
                             </div>
 
@@ -66,77 +70,107 @@
                                 <x-input-error :messages="$errors->get('registration_face_descriptor')" class="mt-2" />
                             </form>
                         </x-bladewind::alert>
+                    @endif
+
+                    @if (! $isTodayAttendanceCompleted)
+                        <form method="POST" action="{{ route('student.attendance.store') }}" class="space-y-4"
+                            data-student-attendance-form
+                            data-school-latitude="{{ $setting->school_latitude ?? '' }}"
+                            data-school-longitude="{{ $setting->school_longitude ?? '' }}"
+                            data-max-radius="{{ $setting->backup_attendance_radius_meters }}"
+                            data-enrolled-face-descriptor='@json($student->face_descriptor)'>
+                            @csrf
+
+                            <input type="hidden" name="latitude" id="attendance_latitude" value="{{ old('latitude') }}" />
+                            <input type="hidden" name="longitude" id="attendance_longitude" value="{{ old('longitude') }}" />
+                            <input type="hidden" name="face_descriptor" id="attendance_face_descriptor"
+                                value="{{ old('face_descriptor') }}" />
+
+                            @if ($setting->school_latitude === null || $setting->school_longitude === null)
+                                <x-bladewind::alert type="error" show_close_icon="false" class="!mb-0">
+                                    Titik koordinat sekolah belum diatur oleh guru. Hubungi admin untuk melengkapi latitude dan
+                                    longitude sekolah.
+                                </x-bladewind::alert>
+                            @endif
+
+                            <div class="grid gap-4 sm:grid-cols-2">
+                                <x-bladewind::alert type="info" show_close_icon="false" class="!mb-0">
+                                    <p class="text-xs uppercase tracking-wider text-slate-400">Status Lokasi</p>
+                                    <p id="location_status_message" class="mt-2 text-sm font-medium text-slate-700">
+                                        Belum diverifikasi.
+                                    </p>
+                                    <p id="location_distance_message" class="mt-1 text-xs text-slate-500"></p>
+                                </x-bladewind::alert>
+
+                                <x-bladewind::alert type="info" show_close_icon="false" class="!mb-0">
+                                    <p class="text-xs uppercase tracking-wider text-slate-400">Status Wajah</p>
+                                    <p id="face_status_message" class="mt-2 text-sm font-medium text-slate-700">
+                                        Belum diverifikasi.
+                                    </p>
+                                    <p id="face_distance_message" class="mt-1 text-xs text-slate-500"></p>
+                                </x-bladewind::alert>
+                            </div>
+
+                            <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
+                                <x-bladewind::button id="start_backup_attendance_button" color="blue" icon="check"
+                                    uppercasing="false">
+                                    Absensi Sekarang
+                                </x-bladewind::button>
+                            </div>
+
+                            <x-input-error :messages="$errors->get('latitude')" class="mt-2" />
+                            <x-input-error :messages="$errors->get('longitude')" class="mt-2" />
+                            <x-input-error :messages="$errors->get('face_descriptor')" class="mt-2" />
+                        </form>
                     @else
                         <x-bladewind::alert type="success" show_close_icon="false" class="!mb-0">
-                            <p class="text-sm font-medium">Template wajah Anda sudah terdaftar.</p>
+                            Absensi hari ini sudah lengkap.
                         </x-bladewind::alert>
                     @endif
 
-                    <form method="POST" action="{{ route('student.attendance.store') }}" class="space-y-4"
-                        data-student-attendance-form
-                        data-school-latitude="{{ $setting->school_latitude ?? '' }}"
-                        data-school-longitude="{{ $setting->school_longitude ?? '' }}"
-                        data-max-radius="{{ $setting->backup_attendance_radius_meters }}"
-                        data-enrolled-face-descriptor='@json($student->face_descriptor)'>
-                        @csrf
-
-                        <input type="hidden" name="latitude" id="attendance_latitude" value="{{ old('latitude') }}" />
-                        <input type="hidden" name="longitude" id="attendance_longitude" value="{{ old('longitude') }}" />
-                        <input type="hidden" name="face_descriptor" id="attendance_face_descriptor"
-                            value="{{ old('face_descriptor') }}" />
-
-                        @if ($setting->school_latitude === null || $setting->school_longitude === null)
-                            <x-bladewind::alert type="error" show_close_icon="false" class="!mb-0">
-                                Titik koordinat sekolah belum diatur oleh guru. Hubungi admin untuk melengkapi latitude dan
-                                longitude sekolah.
-                            </x-bladewind::alert>
-                        @endif
-
-                        <div class="grid gap-4 sm:grid-cols-2">
+                    <x-bladewind::modal name="attendance-face-recognition-modal" title="Verifikasi Wajah"
+                        show_action_buttons="false" show_close_icon="false" backdrop_can_close="false" size="medium">
+                        <div class="space-y-4">
                             <x-bladewind::alert type="info" show_close_icon="false" class="!mb-0">
-                                <p class="text-xs uppercase tracking-wider text-slate-400">Status Lokasi</p>
-                                <p id="location_status_message" class="mt-2 text-sm font-medium text-slate-700">
-                                    Belum diverifikasi.
+                                <p id="modal_face_hint" class="text-sm">
+                                    Posisikan wajah di dalam frame lalu klik Verifikasi Wajah.
                                 </p>
-                                <p id="location_distance_message" class="mt-1 text-xs text-slate-500"></p>
                             </x-bladewind::alert>
 
-                            <x-bladewind::alert type="info" show_close_icon="false" class="!mb-0">
-                                <p class="text-xs uppercase tracking-wider text-slate-400">Status Wajah</p>
-                                <p id="face_status_message" class="mt-2 text-sm font-medium text-slate-700">
-                                    Belum diverifikasi.
-                                </p>
-                                <p id="face_distance_message" class="mt-1 text-xs text-slate-500"></p>
-                            </x-bladewind::alert>
+                            <div class="relative overflow-hidden rounded-xl border border-slate-200 bg-slate-950">
+                                <video id="face_camera_preview_modal" class="h-72 w-full object-cover" autoplay muted playsinline></video>
+                                <div class="pointer-events-none absolute inset-0 flex items-center justify-center">
+                                    <div class="h-56 w-40 rounded-[999px] border-2 border-dashed border-white/90"></div>
+                                </div>
+                                <div class="absolute inset-x-0 bottom-0 bg-black/60 px-3 py-2 text-center text-xs text-white">
+                                    Pastikan wajah berada di tengah frame sebagai acuan.
+                                </div>
+                            </div>
+
+                            <p id="modal_face_status_message" class="text-sm text-slate-600">
+                                Kamera belum dimulai.
+                            </p>
+
+                            <div class="flex flex-col gap-3 sm:flex-row sm:justify-end">
+                                <x-bladewind::button id="close_face_recognition_button" type="secondary" outline="true"
+                                    uppercasing="false">
+                                    Batal
+                                </x-bladewind::button>
+
+                                <x-bladewind::button id="confirm_face_recognition_button" color="blue"
+                                    uppercasing="false" disabled="true">
+                                    Verifikasi Wajah
+                                </x-bladewind::button>
+                            </div>
                         </div>
-
-                        <div class="overflow-hidden rounded-lg border border-slate-200 bg-slate-950">
-                            <video id="face_camera_preview" class="h-56 w-full object-cover" autoplay muted playsinline></video>
-                        </div>
-
-                        <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
-                            <x-bladewind::button id="prepare_backup_attendance_button" color="blue"
-                                uppercasing="false">
-                                Ambil Lokasi & Verifikasi Wajah
-                            </x-bladewind::button>
-
-                            <x-bladewind::button id="submit_backup_attendance_button" icon="check" can_submit="true"
-                                disabled="true" uppercasing="false">
-                                Kirim Absensi Cadangan
-                            </x-bladewind::button>
-                        </div>
-
-                        <x-input-error :messages="$errors->get('latitude')" class="mt-2" />
-                        <x-input-error :messages="$errors->get('longitude')" class="mt-2" />
-                        <x-input-error :messages="$errors->get('face_descriptor')" class="mt-2" />
-                    </form>
+                    </x-bladewind::modal>
                 </div>
             </x-bladewind::card>
         @else
             <x-bladewind::card class="!p-6 border-amber-200 bg-amber-50/60">
                 <h3 class="text-lg font-semibold text-amber-800">Fitur Belum Diaktifkan Guru</h3>
                 <p class="mt-1 text-sm text-amber-700">
-                    Absensi cadangan hanya dapat digunakan ketika guru mengaktifkannya dari dashboard admin.
+                    Absensi hanya dapat digunakan ketika guru mengaktifkannya dari dashboard admin.
                 </p>
             </x-bladewind::card>
         @endif

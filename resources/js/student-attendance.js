@@ -1,38 +1,42 @@
-import * as faceapi from 'face-api.js';
-
-const FACE_MODEL_BASE_URL = '/vendor/face-api/models';
+const FACE_API_CDN_SCRIPT_URL = 'https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js';
+const FACE_MODEL_BASE_URL = 'https://justadudewhohacks.github.io/face-api.js/models';
 const FACE_MATCH_MAX_DISTANCE = 0.55;
+const FACE_MODAL_NAME = 'attendance-face-recognition-modal';
 
+let faceApiLoadPromise = null;
 let faceModelsLoadPromise = null;
 let activeMediaStream = null;
+let activeFlow = null;
 
 const attendanceForm = document.querySelector('[data-student-attendance-form]');
 const registrationForm = document.querySelector('[data-face-registration-form]');
+const cameraPreviewElement = document.getElementById('face_camera_preview_modal');
+const modalHintElement = document.getElementById('modal_face_hint');
+const modalStatusMessageElement = document.getElementById('modal_face_status_message');
+const confirmFaceButton = document.getElementById('confirm_face_recognition_button');
+const closeFaceButton = document.getElementById('close_face_recognition_button');
+
+const attendanceUi = {
+    startButton: document.getElementById('start_backup_attendance_button'),
+    latitudeInput: document.getElementById('attendance_latitude'),
+    longitudeInput: document.getElementById('attendance_longitude'),
+    descriptorInput: document.getElementById('attendance_face_descriptor'),
+    locationStatus: document.getElementById('location_status_message'),
+    locationDistance: document.getElementById('location_distance_message'),
+    faceStatus: document.getElementById('face_status_message'),
+    faceDistance: document.getElementById('face_distance_message'),
+};
+
+const registrationUi = {
+    captureButton: document.getElementById('capture_registration_face_button'),
+    descriptorInput: document.getElementById('registration_face_descriptor'),
+    statusMessage: document.getElementById('registration_status_message'),
+};
 
 if (attendanceForm !== null || registrationForm !== null) {
-    const cameraPreviewElement = document.getElementById('face_camera_preview');
-
-    const attendanceUi = {
-        prepareButton: document.getElementById('prepare_backup_attendance_button'),
-        submitButton: document.getElementById('submit_backup_attendance_button'),
-        latitudeInput: document.getElementById('attendance_latitude'),
-        longitudeInput: document.getElementById('attendance_longitude'),
-        descriptorInput: document.getElementById('attendance_face_descriptor'),
-        locationStatus: document.getElementById('location_status_message'),
-        locationDistance: document.getElementById('location_distance_message'),
-        faceStatus: document.getElementById('face_status_message'),
-        faceDistance: document.getElementById('face_distance_message'),
-    };
-
-    const registrationUi = {
-        captureButton: document.getElementById('capture_registration_face_button'),
-        descriptorInput: document.getElementById('registration_face_descriptor'),
-        statusMessage: document.getElementById('registration_status_message'),
-    };
-
-    if (attendanceForm !== null && attendanceUi.prepareButton !== null) {
-        attendanceUi.prepareButton.addEventListener('click', async () => {
-            await verifyAttendanceForm(attendanceForm, attendanceUi, cameraPreviewElement);
+    if (attendanceForm !== null && attendanceUi.startButton !== null) {
+        attendanceUi.startButton.addEventListener('click', async () => {
+            await prepareAttendanceAndOpenFaceModal();
         });
     }
 
@@ -42,47 +46,47 @@ if (attendanceForm !== null || registrationForm !== null) {
         && registrationUi.descriptorInput !== null
     ) {
         registrationUi.captureButton.addEventListener('click', async () => {
-            registrationUi.captureButton.disabled = true;
-            updateText(registrationUi.statusMessage, 'Memproses pendaftaran template wajah...', 'neutral');
+            await openRegistrationFaceModal();
+        });
+    }
 
-            try {
-                const descriptor = await captureFaceDescriptor(cameraPreviewElement);
+    if (confirmFaceButton !== null) {
+        confirmFaceButton.addEventListener('click', async () => {
+            await confirmFaceRecognition();
+        });
+    }
 
-                registrationUi.descriptorInput.value = JSON.stringify(descriptor);
-                updateText(registrationUi.statusMessage, 'Template wajah berhasil diambil. Menyimpan data...', 'success');
-
-                registrationForm.requestSubmit();
-            } catch (error) {
-                updateText(registrationUi.statusMessage, normalizeErrorMessage(error), 'error');
-                registrationUi.captureButton.disabled = false;
-            }
+    if (closeFaceButton !== null) {
+        closeFaceButton.addEventListener('click', () => {
+            closeFaceRecognitionModal();
         });
     }
 
     window.addEventListener('beforeunload', stopCameraStream);
 }
 
-async function verifyAttendanceForm(form, ui, cameraPreviewElement) {
+async function prepareAttendanceAndOpenFaceModal() {
     if (
-        ui.submitButton === null
-        || ui.latitudeInput === null
-        || ui.longitudeInput === null
-        || ui.descriptorInput === null
+        attendanceForm === null
+        || attendanceUi.startButton === null
+        || attendanceUi.latitudeInput === null
+        || attendanceUi.longitudeInput === null
+        || attendanceUi.descriptorInput === null
     ) {
         return;
     }
 
-    ui.prepareButton.disabled = true;
-    ui.submitButton.disabled = true;
+    attendanceUi.startButton.disabled = true;
+    attendanceUi.descriptorInput.value = '';
 
-    updateText(ui.locationStatus, 'Mengambil lokasi perangkat...', 'neutral');
-    updateText(ui.locationDistance, '', 'neutral');
-    updateText(ui.faceStatus, 'Menunggu proses verifikasi wajah...', 'neutral');
-    updateText(ui.faceDistance, '', 'neutral');
+    updateText(attendanceUi.locationStatus, 'Mengambil lokasi perangkat...', 'neutral');
+    updateText(attendanceUi.locationDistance, '', 'neutral');
+    updateText(attendanceUi.faceStatus, 'Menunggu verifikasi wajah di modal.', 'neutral');
+    updateText(attendanceUi.faceDistance, '', 'neutral');
 
     try {
-        const schoolLatitude = parseCoordinate(form.dataset.schoolLatitude);
-        const schoolLongitude = parseCoordinate(form.dataset.schoolLongitude);
+        const schoolLatitude = parseCoordinate(attendanceForm.dataset.schoolLatitude);
+        const schoolLongitude = parseCoordinate(attendanceForm.dataset.schoolLongitude);
 
         if (schoolLatitude === null || schoolLongitude === null) {
             throw new Error('Koordinat sekolah belum diatur. Hubungi admin.');
@@ -96,54 +100,166 @@ async function verifyAttendanceForm(form, ui, cameraPreviewElement) {
             schoolLongitude,
         );
 
-        const maxRadiusMeter = Number(form.dataset.maxRadius ?? 0);
+        const maxRadiusMeter = Number(attendanceForm.dataset.maxRadius ?? 0);
 
-        ui.latitudeInput.value = currentLocation.latitude.toFixed(7);
-        ui.longitudeInput.value = currentLocation.longitude.toFixed(7);
+        attendanceUi.latitudeInput.value = currentLocation.latitude.toFixed(7);
+        attendanceUi.longitudeInput.value = currentLocation.longitude.toFixed(7);
 
         if (Number.isFinite(maxRadiusMeter) && distanceMeter > maxRadiusMeter) {
-            updateText(ui.locationStatus, 'Lokasi di luar radius absensi.', 'error');
-            updateText(ui.locationDistance, `Jarak terdeteksi ${distanceMeter.toFixed(2)} meter.`, 'error');
+            updateText(attendanceUi.locationStatus, 'Lokasi di luar radius absensi.', 'error');
+            updateText(attendanceUi.locationDistance, `Jarak terdeteksi ${distanceMeter.toFixed(2)} meter.`, 'error');
             throw new Error('Anda berada di luar radius absensi yang diizinkan.');
         }
 
-        updateText(ui.locationStatus, 'Lokasi valid dan berada dalam radius.', 'success');
-        updateText(ui.locationDistance, `Jarak terdeteksi ${distanceMeter.toFixed(2)} meter.`, 'success');
+        updateText(attendanceUi.locationStatus, 'Lokasi valid dan berada dalam radius.', 'success');
+        updateText(attendanceUi.locationDistance, `Jarak terdeteksi ${distanceMeter.toFixed(2)} meter.`, 'success');
 
-        const enrolledDescriptor = parseDescriptorDataset(form.dataset.enrolledFaceDescriptor);
+        await openFaceRecognitionModal('attendance');
+    } catch (error) {
+        updateText(attendanceUi.faceStatus, normalizeErrorMessage(error), 'error');
+    } finally {
+        attendanceUi.startButton.disabled = false;
+    }
+}
+
+async function openRegistrationFaceModal() {
+    if (registrationUi.captureButton !== null) {
+        registrationUi.captureButton.disabled = true;
+    }
+
+    updateText(registrationUi.statusMessage, 'Menyiapkan kamera untuk pendaftaran template wajah...', 'neutral');
+
+    try {
+        await openFaceRecognitionModal('registration');
+    } catch (error) {
+        updateText(registrationUi.statusMessage, normalizeErrorMessage(error), 'error');
+
+        if (registrationUi.captureButton !== null) {
+            registrationUi.captureButton.disabled = false;
+        }
+    }
+}
+
+async function openFaceRecognitionModal(flow) {
+    if (cameraPreviewElement === null || confirmFaceButton === null) {
+        throw new Error('Komponen modal face recognition tidak ditemukan.');
+    }
+
+    activeFlow = flow;
+
+    if (modalHintElement !== null) {
+        modalHintElement.textContent = flow === 'attendance'
+            ? 'Koordinat sudah valid. Posisikan wajah di dalam frame lalu klik Verifikasi Wajah.'
+            : 'Posisikan wajah di dalam frame lalu klik Verifikasi Wajah untuk mendaftarkan template.';
+    }
+
+    updateText(modalStatusMessageElement, 'Menyalakan kamera...', 'neutral');
+
+    if (typeof showModal === 'function') {
+        showModal(FACE_MODAL_NAME);
+    }
+
+    confirmFaceButton.disabled = true;
+
+    try {
+        await startCameraStream(cameraPreviewElement);
+
+        updateText(modalStatusMessageElement, 'Memuat model face recognition.', 'neutral');
+        await ensureFaceApiReady();
+
+        updateText(modalStatusMessageElement, 'Kamera siap. Pastikan wajah berada di dalam frame.', 'success');
+        confirmFaceButton.disabled = false;
+    } catch (error) {
+        closeFaceRecognitionModal();
+
+        throw error;
+    }
+}
+
+async function confirmFaceRecognition() {
+    if (
+        cameraPreviewElement === null
+        || confirmFaceButton === null
+        || activeFlow === null
+    ) {
+        return;
+    }
+
+    confirmFaceButton.disabled = true;
+    updateText(modalStatusMessageElement, 'Mendeteksi wajah...', 'neutral');
+
+    try {
+        const capturedDescriptor = await captureFaceDescriptor(cameraPreviewElement);
+
+        if (activeFlow === 'registration') {
+            if (registrationForm === null || registrationUi.descriptorInput === null) {
+                throw new Error('Form pendaftaran wajah tidak ditemukan.');
+            }
+
+            registrationUi.descriptorInput.value = JSON.stringify(capturedDescriptor);
+            updateText(registrationUi.statusMessage, 'Template wajah berhasil diambil. Menyimpan data...', 'success');
+            closeFaceRecognitionModal();
+            registrationForm.requestSubmit();
+
+            return;
+        }
+
+        if (attendanceForm === null || attendanceUi.descriptorInput === null) {
+            throw new Error('Form absensi tidak ditemukan.');
+        }
+
+        const enrolledDescriptor = parseDescriptorDataset(attendanceForm.dataset.enrolledFaceDescriptor);
 
         if (enrolledDescriptor === null) {
             throw new Error('Template wajah belum tersedia. Silakan daftarkan wajah terlebih dahulu.');
         }
 
-        updateText(ui.faceStatus, 'Memproses verifikasi wajah...', 'neutral');
-
-        const capturedDescriptor = await captureFaceDescriptor(cameraPreviewElement);
         const faceDistance = calculateEuclideanDistance(capturedDescriptor, enrolledDescriptor);
 
         if (faceDistance > FACE_MATCH_MAX_DISTANCE) {
-            updateText(ui.faceStatus, 'Wajah tidak cocok dengan template terdaftar.', 'error');
-            updateText(ui.faceDistance, `Jarak descriptor ${faceDistance.toFixed(4)}.`, 'error');
+            updateText(attendanceUi.faceStatus, 'Wajah tidak cocok dengan template terdaftar.', 'error');
+            updateText(attendanceUi.faceDistance, `Jarak descriptor ${faceDistance.toFixed(4)}.`, 'error');
             throw new Error('Verifikasi wajah gagal. Pastikan wajah menghadap kamera dengan jelas.');
         }
 
-        ui.descriptorInput.value = JSON.stringify(capturedDescriptor);
+        attendanceUi.descriptorInput.value = JSON.stringify(capturedDescriptor);
+        updateText(attendanceUi.faceStatus, 'Wajah berhasil diverifikasi.', 'success');
+        updateText(attendanceUi.faceDistance, `Jarak descriptor ${faceDistance.toFixed(4)}.`, 'success');
 
-        updateText(ui.faceStatus, 'Wajah berhasil diverifikasi.', 'success');
-        updateText(ui.faceDistance, `Jarak descriptor ${faceDistance.toFixed(4)}.`, 'success');
-
-        ui.submitButton.disabled = false;
+        closeFaceRecognitionModal();
+        attendanceForm.requestSubmit();
     } catch (error) {
-        if (ui.submitButton !== null) {
-            ui.submitButton.disabled = true;
+        updateText(modalStatusMessageElement, normalizeErrorMessage(error), 'error');
+
+        if (activeFlow === 'attendance') {
+            updateText(attendanceUi.faceStatus, normalizeErrorMessage(error), 'error');
         }
 
-        if (ui.faceStatus !== null && (ui.faceStatus.textContent ?? '').trim() === 'Menunggu proses verifikasi wajah...') {
-            updateText(ui.faceStatus, normalizeErrorMessage(error), 'error');
+        if (activeFlow === 'registration') {
+            updateText(registrationUi.statusMessage, normalizeErrorMessage(error), 'error');
         }
     } finally {
-        ui.prepareButton.disabled = false;
-        stopCameraStream();
+        if (confirmFaceButton !== null && activeFlow !== null) {
+            confirmFaceButton.disabled = false;
+        }
+    }
+}
+
+function closeFaceRecognitionModal() {
+    if (typeof hideModal === 'function') {
+        hideModal(FACE_MODAL_NAME);
+    }
+
+    stopCameraStream();
+
+    if (confirmFaceButton !== null) {
+        confirmFaceButton.disabled = true;
+    }
+
+    activeFlow = null;
+
+    if (registrationUi.captureButton !== null) {
+        registrationUi.captureButton.disabled = false;
     }
 }
 
@@ -217,17 +333,19 @@ function toRadian(value) {
 }
 
 async function captureFaceDescriptor(cameraPreviewElement) {
-    await ensureFaceApiReady();
+    const faceApi = await ensureFaceApiReady();
 
-    await startCameraStream(cameraPreviewElement);
+    if (activeMediaStream === null) {
+        await startCameraStream(cameraPreviewElement);
+    }
 
-    const detectionOptions = new faceapi.TinyFaceDetectorOptions({
+    const detectionOptions = new faceApi.TinyFaceDetectorOptions({
         inputSize: 320,
         scoreThreshold: 0.5,
     });
 
-    for (let attempt = 0; attempt < 12; attempt += 1) {
-        const result = await faceapi
+    for (let attempt = 0; attempt < 16; attempt += 1) {
+        const result = await faceApi
             .detectSingleFace(cameraPreviewElement, detectionOptions)
             .withFaceLandmarks()
             .withFaceDescriptor();
@@ -243,10 +361,41 @@ async function captureFaceDescriptor(cameraPreviewElement) {
 }
 
 async function ensureFaceApiReady() {
-    await ensureFaceModelsReady();
+    if (window.faceapi !== undefined) {
+        await ensureFaceModelsReady(window.faceapi);
+
+        return window.faceapi;
+    }
+
+    if (faceApiLoadPromise === null) {
+        faceApiLoadPromise = new Promise((resolve, reject) => {
+            const scriptElement = document.createElement('script');
+            scriptElement.src = FACE_API_CDN_SCRIPT_URL;
+            scriptElement.async = true;
+
+            scriptElement.onload = async () => {
+                try {
+                    await ensureFaceModelsReady(window.faceapi);
+                    resolve(window.faceapi);
+                } catch (error) {
+                    faceApiLoadPromise = null;
+                    reject(error);
+                }
+            };
+
+            scriptElement.onerror = () => {
+                faceApiLoadPromise = null;
+                reject(new Error('Gagal memuat library face recognition.'));
+            };
+
+            document.head.appendChild(scriptElement);
+        });
+    }
+
+    return faceApiLoadPromise;
 }
 
-async function ensureFaceModelsReady() {
+async function ensureFaceModelsReady(faceApi) {
     if (faceModelsLoadPromise !== null) {
         await faceModelsLoadPromise;
 
@@ -254,12 +403,18 @@ async function ensureFaceModelsReady() {
     }
 
     faceModelsLoadPromise = Promise.all([
-        faceapi.nets.tinyFaceDetector.loadFromUri(FACE_MODEL_BASE_URL),
-        faceapi.nets.faceLandmark68Net.loadFromUri(FACE_MODEL_BASE_URL),
-        faceapi.nets.faceRecognitionNet.loadFromUri(FACE_MODEL_BASE_URL),
+        faceApi.nets.tinyFaceDetector.loadFromUri(FACE_MODEL_BASE_URL),
+        faceApi.nets.faceLandmark68Net.loadFromUri(FACE_MODEL_BASE_URL),
+        faceApi.nets.faceRecognitionNet.loadFromUri(FACE_MODEL_BASE_URL),
     ]);
 
-    await faceModelsLoadPromise;
+    try {
+        await faceModelsLoadPromise;
+    } catch (error) {
+        faceModelsLoadPromise = null;
+
+        throw new Error('Model face recognition gagal dimuat. Silakan cek koneksi internet Anda.');
+    }
 }
 
 async function startCameraStream(cameraPreviewElement) {
@@ -342,7 +497,7 @@ function updateText(element, message, state) {
     }
 
     element.textContent = message;
-    element.classList.remove('text-slate-600', 'text-slate-700', 'text-slate-500', 'text-emerald-600', 'text-rose-600');
+    element.classList.remove('text-slate-600', 'text-slate-700', 'text-slate-500', 'text-emerald-600', 'text-rose-600', 'text-amber-600');
 
     if (state === 'success') {
         element.classList.add('text-emerald-600');
