@@ -1,2 +1,2 @@
-<img src="{{ asset('assets/Logo.png') }}" {{ $attributes }}>
+<img src="{{ asset('favicon.svg') }}" {{ $attributes }}>
 

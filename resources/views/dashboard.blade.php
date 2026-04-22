@@ -14,7 +14,7 @@
     <div class="space-y-8">
         {{-- Header Section --}}
         <x-bladewind::card class="relative overflow-hidden !p-8">
-            <div class="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+            <div class="relative flex flex-col md:flex-row md:items-center md:justify-between gap-6">
                 <div>
                     <h1 class="text-2xl font-bold text-slate-800">Selamat Datang, {{ Auth::user()->name }}! 👋</h1>
                     <p class="mt-1 text-slate-500">Berikut adalah ringkasan absensi siswa untuk hari ini.</p>

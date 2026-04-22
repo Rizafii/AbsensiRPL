@@ -5,8 +5,11 @@ namespace App\Services;
 use App\Models\Attendance;
 use App\Models\Setting;
 use App\Models\Student;
+use App\Models\User;
+use App\Notifications\AttendanceSavedNotification;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
 
 class AttendanceService
 {
@@ -181,6 +184,14 @@ class AttendanceService
                 $checkInNotification['check_in_at'],
                 $checkInNotification['status'],
             );
+
+            $admins = User::where('role', User::ROLE_ADMIN)->get();
+            Notification::send($admins, new AttendanceSavedNotification(
+                $checkInNotification['student_name'],
+                'check-in',
+                $checkInNotification['status'],
+                $checkInNotification['check_in_at'],
+            ));
         }
 
         if ($checkOutNotification !== null) {
@@ -189,6 +200,14 @@ class AttendanceService
                 $checkOutNotification['check_out_at'],
                 $checkOutNotification['status'],
             );
+
+            $admins = User::where('role', User::ROLE_ADMIN)->get();
+            Notification::send($admins, new AttendanceSavedNotification(
+                $checkOutNotification['student_name'],
+                'check-out',
+                $checkOutNotification['status'],
+                $checkOutNotification['check_out_at'],
+            ));
         }
 
         return $result;
