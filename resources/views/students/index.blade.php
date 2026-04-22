@@ -54,7 +54,6 @@
                         <td class="py-5">
                             <div class="flex flex-col">
                                 <span class="text-xs font-semibold text-slate-600">{{ $student->user?->email ?? '-' }}</span>
-                                <span class="text-[10px] text-slate-400">Password awal: NIS</span>
                             </div>
                         </td>
                         <td class="py-4 pr-6 text-right">

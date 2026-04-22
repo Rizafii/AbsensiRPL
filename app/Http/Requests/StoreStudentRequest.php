@@ -27,6 +27,8 @@ class StoreStudentRequest extends FormRequest
             'name' => ['required', 'string', 'max:255'],
             'nis' => ['required', 'string', 'max:50', Rule::unique('students', 'nis')],
             'fingerprint_id' => ['required', 'integer', 'min:1', Rule::unique('students', 'fingerprint_id')],
+            'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')],
+            'password' => ['required', 'string', 'min:4'],
         ];
     }
 }

@@ -6,11 +6,9 @@ use App\Http\Requests\StoreStudentRequest;
 use App\Http\Requests\UpdateStudentRequest;
 use App\Models\Student;
 use App\Models\User;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
 use Illuminate\View\View;
 
 class StudentController extends Controller
@@ -48,12 +46,12 @@ class StudentController extends Controller
         DB::transaction(function () use ($validated): void {
             $student = Student::query()->create($validated);
 
-            $this->createStudentUserAccount($student);
+            $this->createStudentUserAccount($student, $validated['email'], $validated['password']);
         });
 
         return redirect()
             ->route('students.index')
-            ->with('status', 'Siswa berhasil ditambahkan. Akun login siswa otomatis dibuat dengan password awal sesuai NIS.');
+            ->with('status', 'Siswa berhasil ditambahkan.');
     }
 
     /**
@@ -84,7 +82,7 @@ class StudentController extends Controller
         DB::transaction(function () use ($validated, $student): void {
             $student->update($validated);
 
-            $this->syncStudentUserAccount($student);
+            $this->syncStudentUserAccount($student, $validated['email'], $validated['password'] ?? null);
         });
 
         return redirect()
@@ -107,66 +105,38 @@ class StudentController extends Controller
             ->with('status', 'Siswa berhasil dihapus.');
     }
 
-    private function createStudentUserAccount(Student $student): User
+    private function createStudentUserAccount(Student $student, string $email, string $password): User
     {
         return User::query()->create([
             'name' => $student->name,
-            'email' => $this->resolveStudentEmail($student),
-            'password' => Hash::make($student->nis),
+            'email' => $email,
+            'password' => Hash::make($password),
             'role' => User::ROLE_STUDENT,
             'student_id' => $student->id,
             'email_verified_at' => now(),
         ]);
     }
 
-    private function syncStudentUserAccount(Student $student): void
+    private function syncStudentUserAccount(Student $student, string $email, ?string $password = null): void
     {
         $user = User::query()->where('student_id', $student->id)->first();
 
         if ($user === null) {
-            $this->createStudentUserAccount($student);
+            $this->createStudentUserAccount($student, $email, $password ?? $student->nis);
 
             return;
         }
 
-        $user->update([
+        $data = [
             'name' => $student->name,
-            'email' => $this->resolveStudentEmail($student),
+            'email' => $email,
             'role' => User::ROLE_STUDENT,
-        ]);
-    }
+        ];
 
-    private function resolveStudentEmail(Student $student): string
-    {
-        $preferredEmail = 'siswa.'.$this->normalizedNisSegment($student).'@absensi.local';
-
-        $isPreferredTaken = User::query()
-            ->where('email', $preferredEmail)
-            ->where(function (Builder $query) use ($student): void {
-                $query->whereNull('student_id')
-                    ->orWhere('student_id', '!=', $student->id);
-            })
-            ->exists();
-
-        if (! $isPreferredTaken) {
-            return $preferredEmail;
+        if ($password !== null && $password !== '') {
+            $data['password'] = Hash::make($password);
         }
 
-        return 'siswa.'.$student->id.'@absensi.local';
-    }
-
-    private function normalizedNisSegment(Student $student): string
-    {
-        $normalizedNis = Str::of($student->nis)
-            ->lower()
-            ->replaceMatches('/[^a-z0-9]+/', '.')
-            ->trim('.')
-            ->value();
-
-        if ($normalizedNis !== '') {
-            return $normalizedNis;
-        }
-
-        return (string) $student->id;
+        $user->update($data);
     }
 }

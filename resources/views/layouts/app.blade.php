@@ -20,9 +20,13 @@
 
         <!-- BladewindUI JS -->
         <script src="{{ asset('vendor/bladewind/js/helpers.js') }}"></script>
+
+        <style>
+            [x-cloak] { display: none !important; }
+        </style>
     </head>
     <body class="font-sans antialiased bg-slate-50 text-slate-800">
-        <div class="min-h-screen flex">
+        <div class="min-h-screen flex" x-data="{ mobileOpen: false }">
             {{-- Sidebar --}}
             @include('layouts.sidebar')
 
