@@ -7,11 +7,9 @@
     $homeRoute = $isStudent ? route('student.attendance.dashboard') : route('dashboard');
 @endphp
 
-<aside x-data="{ mobileOpen: false }" 
-    @sidebar-toggle.window="mobileOpen = !mobileOpen"
-    class="fixed inset-y-0 left-0 z-50 flex flex-col w-64 bg-white border-r border-slate-200 text-slate-600 transition-transform duration-300 transform lg:translate-x-0 lg:shadow-2xl"
-    :class="mobileOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full shadow-none'"
-    id="sidebar">
+<aside @sidebar-toggle.window="mobileOpen = !mobileOpen"
+    class="fixed inset-y-0 left-0 z-50 flex flex-col w-64 bg-white border-r border-slate-200 text-slate-600 transition-transform duration-300 transform lg:translate-x-0"
+    :class="mobileOpen ? 'translate-x-0' : '-translate-x-full'" id="sidebar">
     {{-- Logo / Brand --}}
     <div class="relative flex h-48 items-center justify-center px-2 border-b border-slate-100">
         <a href="{{ $homeRoute }}" class="flex items-center justify-center overflow-hidden w-full">
@@ -19,8 +17,10 @@
                 class="h-40 w-full object-contain transition-all duration-300">
         </a>
         {{-- Close button for mobile --}}
-        <button @click="mobileOpen = false" class="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-600 lg:hidden">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+        <button @click="mobileOpen = false"
+            class="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-600 lg:hidden">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+                stroke="currentColor" class="w-6 h-6">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
             </svg>
         </button>
@@ -35,7 +35,7 @@
         @if ($isAdmin)
             <a href="{{ route('dashboard') }}"
                 class="group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200
-                    {{ request()->routeIs('dashboard') ? 'bg-[#2D5A43] text-white shadow-md shadow-emerald-900/10' : 'text-slate-600 hover:bg-emerald-50 hover:text-[#2D5A43]' }}">
+                        {{ request()->routeIs('dashboard') ? 'bg-[#2D5A43] text-white shadow-md shadow-emerald-900/10' : 'text-slate-600 hover:bg-emerald-50 hover:text-[#2D5A43]' }}">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
                     stroke="currentColor" class="h-5 w-5 shrink-0 transition-colors">
                     <path stroke-linecap="round" stroke-linejoin="round"
@@ -46,7 +46,7 @@
 
             <a href="{{ route('students.index') }}"
                 class="group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200
-                    {{ request()->routeIs('students.*') ? 'bg-[#2D5A43] text-white shadow-md shadow-emerald-900/10' : 'text-slate-600 hover:bg-emerald-50 hover:text-[#2D5A43]' }}">
+                        {{ request()->routeIs('students.*') ? 'bg-[#2D5A43] text-white shadow-md shadow-emerald-900/10' : 'text-slate-600 hover:bg-emerald-50 hover:text-[#2D5A43]' }}">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
                     stroke="currentColor" class="h-5 w-5 shrink-0 transition-colors">
                     <path stroke-linecap="round" stroke-linejoin="round"
@@ -57,7 +57,7 @@
 
             <a href="{{ route('reports.attendance') }}"
                 class="group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200
-                    {{ request()->routeIs('reports.*') ? 'bg-[#2D5A43] text-white shadow-md shadow-emerald-900/10' : 'text-slate-600 hover:bg-emerald-50 hover:text-[#2D5A43]' }}">
+                        {{ request()->routeIs('reports.*') ? 'bg-[#2D5A43] text-white shadow-md shadow-emerald-900/10' : 'text-slate-600 hover:bg-emerald-50 hover:text-[#2D5A43]' }}">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
                     stroke="currentColor" class="h-5 w-5 shrink-0 transition-colors">
                     <path stroke-linecap="round" stroke-linejoin="round"
@@ -68,7 +68,7 @@
 
             <a href="{{ route('enroll.index') }}"
                 class="group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200
-                    {{ request()->routeIs('enroll.*') ? 'bg-[#2D5A43] text-white shadow-md shadow-emerald-900/10' : 'text-slate-600 hover:bg-emerald-50 hover:text-[#2D5A43]' }}">
+                        {{ request()->routeIs('enroll.*') ? 'bg-[#2D5A43] text-white shadow-md shadow-emerald-900/10' : 'text-slate-600 hover:bg-emerald-50 hover:text-[#2D5A43]' }}">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
                     stroke="currentColor" class="h-5 w-5 shrink-0 transition-colors">
                     <path stroke-linecap="round" stroke-linejoin="round"
@@ -85,7 +85,7 @@
 
             <a href="{{ route('settings.attendance.edit') }}"
                 class="group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200
-                    {{ request()->routeIs('settings.attendance.*') ? 'bg-[#2D5A43] text-white shadow-md shadow-emerald-900/10' : 'text-slate-600 hover:bg-emerald-50 hover:text-[#2D5A43]' }}">
+                        {{ request()->routeIs('settings.attendance.*') ? 'bg-[#2D5A43] text-white shadow-md shadow-emerald-900/10' : 'text-slate-600 hover:bg-emerald-50 hover:text-[#2D5A43]' }}">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
                     stroke="currentColor" class="h-5 w-5 shrink-0 transition-colors">
                     <path stroke-linecap="round" stroke-linejoin="round"
@@ -97,7 +97,7 @@
 
             <a href="{{ route('settings.fonnte.edit') }}"
                 class="group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200
-                    {{ request()->routeIs('settings.fonnte.*') ? 'bg-[#2D5A43] text-white shadow-md shadow-emerald-900/10' : 'text-slate-600 hover:bg-emerald-50 hover:text-[#2D5A43]' }}">
+                        {{ request()->routeIs('settings.fonnte.*') ? 'bg-[#2D5A43] text-white shadow-md shadow-emerald-900/10' : 'text-slate-600 hover:bg-emerald-50 hover:text-[#2D5A43]' }}">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
                     stroke="currentColor" class="h-5 w-5 shrink-0 transition-colors">
                     <path stroke-linecap="round" stroke-linejoin="round"
@@ -111,7 +111,7 @@
         @if ($isStudent)
             <a href="{{ route('student.attendance.dashboard') }}"
                 class="group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200
-                    {{ request()->routeIs('student.attendance.*') ? 'bg-[#2D5A43] text-white shadow-md shadow-emerald-900/10' : 'text-slate-600 hover:bg-emerald-50 hover:text-[#2D5A43]' }}">
+                        {{ request()->routeIs('student.attendance.*') ? 'bg-[#2D5A43] text-white shadow-md shadow-emerald-900/10' : 'text-slate-600 hover:bg-emerald-50 hover:text-[#2D5A43]' }}">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
                     stroke="currentColor" class="h-5 w-5 shrink-0 transition-colors">
                     <path stroke-linecap="round" stroke-linejoin="round"
@@ -167,7 +167,8 @@
 </aside>
 
 {{-- Mobile Overlay --}}
-<div x-show="mobileOpen" x-cloak @click="mobileOpen = false" class="fixed inset-0 z-40 bg-slate-950/60 backdrop-blur-sm lg:hidden"
+<div x-show="mobileOpen" x-cloak @click="mobileOpen = false"
+    class="fixed inset-0 z-40 bg-black/50 lg:hidden"
     x-transition:enter="transition-opacity duration-300" x-transition:enter-start="opacity-0"
     x-transition:enter-end="opacity-100" x-transition:leave="transition-opacity duration-300"
     x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"></div>

@@ -26,7 +26,7 @@
         </style>
     </head>
     <body class="font-sans antialiased bg-slate-50 text-slate-800">
-        <div class="min-h-screen flex" x-data>
+        <div class="min-h-screen flex" x-data="{ mobileOpen: false }">
             {{-- Sidebar --}}
             @include('layouts.sidebar')
 
