@@ -13,7 +13,7 @@
     {{-- Logo / Brand --}}
     <div class="relative flex h-48 items-center justify-center px-2 border-b border-slate-100">
         <a href="{{ $homeRoute }}" class="flex items-center justify-center overflow-hidden w-full">
-            <img src="{{ asset('assets/Logo.png') }}" alt="Logo"
+            <img src="{{ asset('favicon.svg') }}" alt="Logo"
                 class="h-40 w-full object-contain transition-all duration-300">
         </a>
         {{-- Close button for mobile --}}

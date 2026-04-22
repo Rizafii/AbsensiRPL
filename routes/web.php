@@ -5,16 +5,16 @@ use App\Http\Controllers\AttendanceSettingController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EnrollController;
 use App\Http\Controllers\FonnteSettingController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\StudentAttendanceController;
 use App\Http\Controllers\StudentController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function () {
-    return view('welcome');
-});
-
 Route::middleware(['auth', 'role:admin'])->group(function () {
+    Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
+    Route::post('/notifications/mark-read', [NotificationController::class, 'markAsRead'])->name('notifications.markRead');
+    Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::put('/dashboard/backup-attendance', [DashboardController::class, 'updateBackupAttendance'])
         ->name('dashboard.backup-attendance.update');
