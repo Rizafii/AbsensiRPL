@@ -9,8 +9,8 @@
 
 <aside x-data="{ mobileOpen: false }" 
     @sidebar-toggle.window="mobileOpen = !mobileOpen"
-    class="fixed inset-y-0 left-0 z-50 flex flex-col w-64 bg-white border-r border-slate-200 text-slate-600 shadow-2xl transition-transform duration-300 transform lg:translate-x-0"
-    :class="mobileOpen ? 'translate-x-0' : '-translate-x-full'"
+    class="fixed inset-y-0 left-0 z-50 flex flex-col w-64 bg-white border-r border-slate-200 text-slate-600 transition-transform duration-300 transform lg:translate-x-0 lg:shadow-2xl"
+    :class="mobileOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full shadow-none'"
     id="sidebar">
     {{-- Logo / Brand --}}
     <div class="relative flex h-48 items-center justify-center px-2 border-b border-slate-100">
@@ -167,7 +167,7 @@
 </aside>
 
 {{-- Mobile Overlay --}}
-<div x-show="mobileOpen" x-cloak @click="mobileOpen = false" class="fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-sm lg:hidden"
+<div x-show="mobileOpen" x-cloak @click="mobileOpen = false" class="fixed inset-0 z-40 bg-slate-950/60 backdrop-blur-sm lg:hidden"
     x-transition:enter="transition-opacity duration-300" x-transition:enter-start="opacity-0"
     x-transition:enter-end="opacity-100" x-transition:leave="transition-opacity duration-300"
     x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"></div>
