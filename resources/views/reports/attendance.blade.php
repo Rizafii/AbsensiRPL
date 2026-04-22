@@ -50,13 +50,8 @@
                                         </span>
                                     </td>
                                     <td class="text-center">
-                                        <x-bladewind::tag label="{{ strtoupper(str_replace('_', ' ', $attendance->status)) }}"
-                                            shade="faint" color="{{ match ($attendance->status) {
-                        'on_time' => 'green',
-                        'late' => 'orange',
-                        'absent' => 'red',
-                        default => 'gray',
-                    } }}" />
+                                        <x-bladewind::tag label="{{ $attendance->statusLabel() }}" shade="faint"
+                                            color="{{ $attendance->statusColor() }}" />
                                     </td>
                                 </tr>
                 @empty

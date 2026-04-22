@@ -1,4 +1,5 @@
 import './bootstrap';
+import './student-attendance';
 
 import Alpine from 'alpinejs';
 

@@ -21,12 +21,14 @@ class DatabaseSeeder extends Seeder
             'name' => 'Admin Absensi',
             'email_verified_at' => now(),
             'password' => 'password',
+            'role' => User::ROLE_ADMIN,
+            'student_id' => null,
         ]);
 
         $this->call([
             SettingSeeder::class,
             FonnteAccountSeeder::class,
-            // StudentSeeder::class,
+            StudentSeeder::class,
         ]);
     }
 }

@@ -3,7 +3,10 @@
 namespace Database\Seeders;
 
 use App\Models\Student;
+use App\Models\User;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 
 class StudentSeeder extends Seeder
 {
@@ -21,10 +24,36 @@ class StudentSeeder extends Seeder
         ];
 
         foreach ($students as $student) {
-            Student::query()->updateOrCreate(
+            $savedStudent = Student::query()->updateOrCreate(
                 ['nis' => $student['nis']],
                 $student,
             );
+
+            User::query()->updateOrCreate(
+                ['student_id' => $savedStudent->id],
+                [
+                    'name' => $savedStudent->name,
+                    'email' => 'siswa.'.$this->normalizedNisSegment($savedStudent->nis, $savedStudent->id).'@absensi.local',
+                    'password' => Hash::make($savedStudent->nis),
+                    'role' => User::ROLE_STUDENT,
+                    'email_verified_at' => now(),
+                ],
+            );
         }
+    }
+
+    private function normalizedNisSegment(string $nis, int $studentId): string
+    {
+        $normalizedNis = Str::of($nis)
+            ->lower()
+            ->replaceMatches('/[^a-z0-9]+/', '.')
+            ->trim('.')
+            ->value();
+
+        if ($normalizedNis !== '') {
+            return $normalizedNis;
+        }
+
+        return (string) $studentId;
     }
 }

@@ -28,6 +28,10 @@ class Setting extends Model
         'friday_check_out_time',
         'late_tolerance',
         'early_leave_tolerance',
+        'backup_attendance_enabled',
+        'backup_attendance_radius_meters',
+        'school_latitude',
+        'school_longitude',
     ];
 
     /**
@@ -38,6 +42,10 @@ class Setting extends Model
         return [
             'late_tolerance' => 'integer',
             'early_leave_tolerance' => 'integer',
+            'backup_attendance_enabled' => 'boolean',
+            'backup_attendance_radius_meters' => 'integer',
+            'school_latitude' => 'float',
+            'school_longitude' => 'float',
         ];
     }
 
@@ -64,6 +72,10 @@ class Setting extends Model
             'friday_check_out_time' => '15:00:00',
             'late_tolerance' => 0,
             'early_leave_tolerance' => 0,
+            'backup_attendance_enabled' => false,
+            'backup_attendance_radius_meters' => 100,
+            'school_latitude' => null,
+            'school_longitude' => null,
         ]);
     }
 

@@ -5,6 +5,12 @@
         </h2>
     </x-slot>
 
+    @if (session('status'))
+        <x-bladewind::alert type="success" class="mb-6">
+            {{ session('status') }}
+        </x-bladewind::alert>
+    @endif
+
     <div class="space-y-8">
         {{-- Header Section --}}
         <x-bladewind::card class="relative overflow-hidden !p-8">
@@ -85,5 +91,68 @@
                 </x-bladewind::statistic>
             </x-bladewind::card>
         </div>
+
+        <x-bladewind::card class="!p-6 border-slate-200 shadow-sm">
+            <div class="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+                <div class="max-w-2xl">
+                    <h3 class="text-lg font-semibold text-slate-800">Aktivasi Absensi Cadangan Siswa</h3>
+                    <p class="mt-2 text-sm text-slate-600">
+                        Gunakan fitur ini saat fingerprint tidak dapat diakses. Siswa harus memenuhi kombinasi verifikasi
+                        wajah dan radius agar absensi berhasil.
+                    </p>
+                </div>
+
+                <form method="POST" action="{{ route('dashboard.backup-attendance.update') }}" class="w-full lg:max-w-md space-y-4">
+                    @csrf
+                    @method('PUT')
+
+                    <label class="flex items-center gap-3 rounded-lg border border-slate-200 px-4 py-3">
+                        <input type="checkbox" name="backup_attendance_enabled" value="1"
+                            @checked(old('backup_attendance_enabled', $setting->backup_attendance_enabled))
+                            class="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500">
+                        <span class="text-sm font-medium text-slate-700">Aktifkan absensi cadangan untuk siswa</span>
+                    </label>
+
+                    <div>
+                        <label for="backup_attendance_radius_meters" class="mb-1 block text-sm font-medium text-slate-700">
+                            Radius Maksimal (meter)
+                        </label>
+                        <input id="backup_attendance_radius_meters" name="backup_attendance_radius_meters" type="number"
+                            min="1" max="5000" required
+                            value="{{ old('backup_attendance_radius_meters', $setting->backup_attendance_radius_meters) }}"
+                            class="w-full rounded-lg border-slate-300 focus:border-emerald-500 focus:ring-emerald-500" />
+                        <x-input-error :messages="$errors->get('backup_attendance_radius_meters')" class="mt-2" />
+                    </div>
+
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <div>
+                            <label for="school_latitude" class="mb-1 block text-sm font-medium text-slate-700">
+                                Latitude Sekolah
+                            </label>
+                            <input id="school_latitude" name="school_latitude" type="number" step="0.0000001"
+                                min="-90" max="90"
+                                value="{{ old('school_latitude', $setting->school_latitude) }}"
+                                class="w-full rounded-lg border-slate-300 focus:border-emerald-500 focus:ring-emerald-500" />
+                            <x-input-error :messages="$errors->get('school_latitude')" class="mt-2" />
+                        </div>
+
+                        <div>
+                            <label for="school_longitude" class="mb-1 block text-sm font-medium text-slate-700">
+                                Longitude Sekolah
+                            </label>
+                            <input id="school_longitude" name="school_longitude" type="number" step="0.0000001"
+                                min="-180" max="180"
+                                value="{{ old('school_longitude', $setting->school_longitude) }}"
+                                class="w-full rounded-lg border-slate-300 focus:border-emerald-500 focus:ring-emerald-500" />
+                            <x-input-error :messages="$errors->get('school_longitude')" class="mt-2" />
+                        </div>
+                    </div>
+
+                    <x-bladewind::button icon="check" can_submit="true">
+                        Simpan Pengaturan Cadangan
+                    </x-bladewind::button>
+                </form>
+            </div>
+        </x-bladewind::card>
     </div>
 </x-app-layout>

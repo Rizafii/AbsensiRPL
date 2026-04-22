@@ -10,7 +10,10 @@ use Illuminate\Support\Facades\DB;
 
 class AttendanceService
 {
-    public function __construct(private readonly FonnteService $fonnteService) {}
+    public function __construct(
+        private readonly FonnteService $fonnteService,
+        private readonly FaceRecognitionService $faceRecognitionService,
+    ) {}
 
     /**
      * @return array{status: string, message: string, student_name?: string, attendance_status?: string}
@@ -28,6 +31,75 @@ class AttendanceService
             ];
         }
 
+        return $this->processForStudent($student);
+    }
+
+    /**
+     * @return array{status: string, message: string, student_name?: string, attendance_status?: string}
+     */
+    public function processBackupByStudent(
+        Student $student,
+        float $latitude,
+        float $longitude,
+        string $faceDescriptor,
+    ): array {
+        $setting = Setting::current();
+
+        if (! $setting->backup_attendance_enabled) {
+            return [
+                'status' => 'error',
+                'message' => 'Absensi cadangan belum diaktifkan oleh guru.',
+            ];
+        }
+
+        if ($setting->school_latitude === null || $setting->school_longitude === null) {
+            return [
+                'status' => 'error',
+                'message' => 'Koordinat sekolah belum diatur oleh guru.',
+            ];
+        }
+
+        if ($student->face_descriptor === null) {
+            return [
+                'status' => 'error',
+                'message' => 'Template wajah Anda belum terdaftar. Silakan daftar wajah terlebih dahulu.',
+            ];
+        }
+
+        $faceVerification = $this->faceRecognitionService->verifyDescriptor(
+            $faceDescriptor,
+            $student->face_descriptor,
+        );
+
+        if (! $faceVerification['verified']) {
+            return [
+                'status' => 'error',
+                'message' => $faceVerification['message'] ?? 'Verifikasi wajah gagal. Silakan coba lagi.',
+            ];
+        }
+
+        $distanceMeter = $this->calculateDistanceInMeters(
+            $latitude,
+            $longitude,
+            (float) $setting->school_latitude,
+            (float) $setting->school_longitude,
+        );
+
+        if ($distanceMeter > (float) $setting->backup_attendance_radius_meters) {
+            return [
+                'status' => 'error',
+                'message' => sprintf('Anda berada di luar radius absensi yang diizinkan (jarak %.2f meter).', $distanceMeter),
+            ];
+        }
+
+        return $this->processForStudent($student);
+    }
+
+    /**
+     * @return array{status: string, message: string, student_name?: string, attendance_status?: string}
+     */
+    private function processForStudent(Student $student): array
+    {
         $now = Carbon::now('Asia/Jakarta');
         $today = $now->toDateString();
         $setting = Setting::current();
@@ -156,5 +228,26 @@ class AttendanceService
         }
 
         return Attendance::STATUS_DEPARTED;
+    }
+
+    private function calculateDistanceInMeters(
+        float $latitudeA,
+        float $longitudeA,
+        float $latitudeB,
+        float $longitudeB,
+    ): float {
+        $earthRadiusMeter = 6371000;
+
+        $latitudeADegree = deg2rad($latitudeA);
+        $latitudeBDegree = deg2rad($latitudeB);
+        $latitudeDelta = deg2rad($latitudeB - $latitudeA);
+        $longitudeDelta = deg2rad($longitudeB - $longitudeA);
+
+        $haversine = sin($latitudeDelta / 2) ** 2
+            + cos($latitudeADegree) * cos($latitudeBDegree) * sin($longitudeDelta / 2) ** 2;
+
+        $centralAngle = 2 * atan2(sqrt($haversine), sqrt(1 - $haversine));
+
+        return $earthRadiusMeter * $centralAngle;
     }
 }

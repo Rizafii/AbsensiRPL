@@ -27,6 +27,7 @@
                     <th class="!text-xs !font-bold !uppercase !tracking-wider text-slate-400">Siswa</th>
                     <th class="!text-xs !font-bold !uppercase !tracking-wider text-slate-400">NIS</th>
                     <th class="!text-xs !font-bold !uppercase !tracking-wider text-slate-400">Fingerprint</th>
+                    <th class="!text-xs !font-bold !uppercase !tracking-wider text-slate-400">Akun Login</th>
                     <th class="!text-xs !font-bold !uppercase !tracking-wider text-slate-400 text-right pr-12">Aksi</th>
                 </x-slot>
 
@@ -48,6 +49,12 @@
                                 </div>
                                 <span class="text-[11px] font-bold text-slate-400 tracking-tighter">ID:
                                     {{ $student->fingerprint_id }}</span>
+                            </div>
+                        </td>
+                        <td class="py-5">
+                            <div class="flex flex-col">
+                                <span class="text-xs font-semibold text-slate-600">{{ $student->user?->email ?? '-' }}</span>
+                                <span class="text-[10px] text-slate-400">Password awal: NIS</span>
                             </div>
                         </td>
                         <td class="py-4 pr-6 text-right">
@@ -85,7 +92,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="4" class="text-center text-slate-400 py-16">
+                        <td colspan="5" class="text-center text-slate-400 py-16">
                             <div class="flex flex-col items-center">
                                 <x-bladewind::icon name="user-group" class="h-12 w-12 text-slate-200 mb-2" />
                                 <span class="text-sm">Belum ada data siswa.</span>

@@ -5,7 +5,12 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreStudentRequest;
 use App\Http\Requests\UpdateStudentRequest;
 use App\Models\Student;
+use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Illuminate\View\View;
 
 class StudentController extends Controller
@@ -16,6 +21,7 @@ class StudentController extends Controller
     public function index(): View
     {
         $students = Student::query()
+            ->with('user:id,email,student_id')
             ->orderBy('name')
             ->paginate(10);
 
@@ -37,11 +43,17 @@ class StudentController extends Controller
      */
     public function store(StoreStudentRequest $request): RedirectResponse
     {
-        Student::query()->create($request->validated());
+        $validated = $request->validated();
+
+        DB::transaction(function () use ($validated): void {
+            $student = Student::query()->create($validated);
+
+            $this->createStudentUserAccount($student);
+        });
 
         return redirect()
             ->route('students.index')
-            ->with('status', 'Siswa berhasil ditambahkan.');
+            ->with('status', 'Siswa berhasil ditambahkan. Akun login siswa otomatis dibuat dengan password awal sesuai NIS.');
     }
 
     /**
@@ -67,7 +79,13 @@ class StudentController extends Controller
      */
     public function update(UpdateStudentRequest $request, Student $student): RedirectResponse
     {
-        $student->update($request->validated());
+        $validated = $request->validated();
+
+        DB::transaction(function () use ($validated, $student): void {
+            $student->update($validated);
+
+            $this->syncStudentUserAccount($student);
+        });
 
         return redirect()
             ->route('students.index')
@@ -79,10 +97,76 @@ class StudentController extends Controller
      */
     public function destroy(Student $student): RedirectResponse
     {
-        $student->delete();
+        DB::transaction(function () use ($student): void {
+            User::query()->where('student_id', $student->id)->delete();
+            $student->delete();
+        });
 
         return redirect()
             ->route('students.index')
             ->with('status', 'Siswa berhasil dihapus.');
+    }
+
+    private function createStudentUserAccount(Student $student): User
+    {
+        return User::query()->create([
+            'name' => $student->name,
+            'email' => $this->resolveStudentEmail($student),
+            'password' => Hash::make($student->nis),
+            'role' => User::ROLE_STUDENT,
+            'student_id' => $student->id,
+            'email_verified_at' => now(),
+        ]);
+    }
+
+    private function syncStudentUserAccount(Student $student): void
+    {
+        $user = User::query()->where('student_id', $student->id)->first();
+
+        if ($user === null) {
+            $this->createStudentUserAccount($student);
+
+            return;
+        }
+
+        $user->update([
+            'name' => $student->name,
+            'email' => $this->resolveStudentEmail($student),
+            'role' => User::ROLE_STUDENT,
+        ]);
+    }
+
+    private function resolveStudentEmail(Student $student): string
+    {
+        $preferredEmail = 'siswa.'.$this->normalizedNisSegment($student).'@absensi.local';
+
+        $isPreferredTaken = User::query()
+            ->where('email', $preferredEmail)
+            ->where(function (Builder $query) use ($student): void {
+                $query->whereNull('student_id')
+                    ->orWhere('student_id', '!=', $student->id);
+            })
+            ->exists();
+
+        if (! $isPreferredTaken) {
+            return $preferredEmail;
+        }
+
+        return 'siswa.'.$student->id.'@absensi.local';
+    }
+
+    private function normalizedNisSegment(Student $student): string
+    {
+        $normalizedNis = Str::of($student->nis)
+            ->lower()
+            ->replaceMatches('/[^a-z0-9]+/', '.')
+            ->trim('.')
+            ->value();
+
+        if ($normalizedNis !== '') {
+            return $normalizedNis;
+        }
+
+        return (string) $student->id;
     }
 }
