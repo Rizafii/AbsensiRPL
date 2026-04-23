@@ -1,4 +1,4 @@
-name: Deploy to Hostinger
+name: Deploy Laravel to Hostinger
 
 on:
   push:
@@ -10,31 +10,43 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      # 1. Ambil source code
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
-      # Build frontend
+      # 2. Setup Node (sesuai server: v20)
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 20
 
-      - name: Install & Build
+      # 3. Install & build Vite
+      - name: Install Dependencies & Build Frontend
         run: |
           npm install
           npm run build
 
-      # Setup PHP
+      # 4. Setup PHP (sesuai server: 8.3)
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: 8.2
+          php-version: 8.3
+          extensions: mbstring, bcmath, pdo, mysql
+          tools: composer
 
-      - name: Install Composer
+      # 5. Install Composer (production)
+      - name: Install PHP Dependencies
         run: composer install --no-dev --optimize-autoloader
 
-      # 🚀 Deploy FTP (INI YANG TADI ERROR)
-      - name: Deploy via FTP
+      # 6. Optional: bersihin file yang gak perlu
+      - name: Cleanup unnecessary files
+        run: |
+          rm -rf node_modules
+          rm -rf tests
+          rm -rf .git
+
+      # 7. 🚀 Deploy ke Hostinger via FTP
+      - name: Deploy to Hostinger via FTP
         uses: SamKirkland/FTP-Deploy-Action@v3.1.1
         with:
           server: 145.223.108.5
@@ -44,3 +56,9 @@ jobs:
           protocol: ftp
           local-dir: ./
           server-dir: /domains/sihadir.smkn6solo.sch.id/AbsensiRPL/
+          exclude: |
+            **/.git*
+            **/.env
+            **/node_modules/**
+            **/tests/**
+            **/storage/logs/**
