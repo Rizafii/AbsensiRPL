@@ -34,13 +34,12 @@ jobs:
 
     # 🔹 Deploy ke Hostinger via FTP
     - name: Deploy via FTP
-    uses: SamKirkland/FTP-Deploy-Action@v3.1.1
-      with:
-        server: 145.223.108.5
-        username: ${{ secrets.FTP_USERNAME }}
-        password: ${{ secrets.FTP_PASSWORD }}
-        port: 21
-        protocol: ftp
-        local-dir: ./
-        server-dir: /domains/sihadir.smkn6solo.sch.id/AbsensiRPL/
-        dangerous-clean-slate: false
+  uses: SamKirkland/FTP-Deploy-Action@v3.1.1
+  with:
+    server: 145.223.108.5
+    username: ${{ secrets.FTP_USERNAME }}
+    password: ${{ secrets.FTP_PASSWORD }}
+    port: 21
+    protocol: ftp
+    local-dir: ./
+    server-dir: /domains/sihadir.smkn6solo.sch.id/AbsensiRPL/
