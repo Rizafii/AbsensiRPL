@@ -10,23 +10,23 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Ambil source code
+      # 1. Checkout repo
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      # 2. Setup Node (sesuai server: v20)
+      # 2. Setup Node (sesuai server)
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 20
 
-      # 3. Install & build Vite
-      - name: Install Dependencies & Build Frontend
+      # 3. Build frontend (Vite)
+      - name: Install & Build Frontend
         run: |
           npm install
           npm run build
 
-      # 4. Setup PHP (sesuai server: 8.3)
+      # 4. Setup PHP
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
@@ -34,31 +34,30 @@ jobs:
           extensions: mbstring, bcmath, pdo, mysql
           tools: composer
 
-      # 5. Install Composer (production)
-      - name: Install PHP Dependencies
+      # 5. Install dependency Laravel (production)
+      - name: Install Composer Dependencies
         run: composer install --no-dev --optimize-autoloader
 
-      # 6. Optional: bersihin file yang gak perlu
+      # 6. Cleanup file yang gak perlu dikirim
       - name: Cleanup unnecessary files
         run: |
           rm -rf node_modules
           rm -rf tests
           rm -rf .git
 
-      # 7. 🚀 Deploy ke Hostinger via FTP
-      - name: Deploy to Hostinger via FTP
+      # 7. 🚀 Deploy ke Hostinger (git-ftp)
+      - name: Deploy to Hostinger
         uses: SamKirkland/FTP-Deploy-Action@v3.1.1
         with:
-          server: 145.223.108.5
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          port: 21
-          protocol: ftp
+          ftp-server: 145.223.108.5
+          ftp-username: ${{ secrets.FTP_USERNAME }}
+          ftp-password: ${{ secrets.FTP_PASSWORD }}
           local-dir: ./
-          server-dir: /domains/sihadir.smkn6solo.sch.id/AbsensiRPL/
-          exclude: |
-            **/.git*
-            **/.env
-            **/node_modules/**
-            **/tests/**
-            **/storage/logs/**
+          git-ftp-args: >
+            --remote-root /domains/sihadir.smkn6solo.sch.id/AbsensiRPL/
+            --auto-init
+            --exclude-glob .git*
+            --exclude-glob .env
+            --exclude-glob node_modules/**
+            --exclude-glob tests/**
+            --exclude-glob storage/logs/**
