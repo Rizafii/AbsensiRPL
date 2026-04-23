@@ -5,6 +5,7 @@ use App\Models\Setting;
 use App\Models\Student;
 use App\Models\User;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 
 afterEach(function (): void {
     Carbon::setTestNow();
@@ -15,10 +16,14 @@ test('creating student from admin page also creates student login account', func
         'role' => User::ROLE_ADMIN,
     ]);
 
+    $studentEmail = 'siswa.nis.akun.001@absensi.local';
+
     $response = $this->actingAs($admin)->post(route('students.store'), [
         'name' => 'Siswa Akun',
         'nis' => 'NIS-AKUN-001',
         'fingerprint_id' => 1201,
+        'email' => $studentEmail,
+        'password' => 'password',
     ]);
 
     $response->assertRedirect(route('students.index'));
@@ -28,7 +33,7 @@ test('creating student from admin page also creates student login account', func
     $this->assertDatabaseHas('users', [
         'student_id' => $student->id,
         'role' => User::ROLE_STUDENT,
-        'email' => 'siswa.nis.akun.001@absensi.local',
+        'email' => $studentEmail,
     ]);
 });
 
@@ -174,6 +179,42 @@ test('student can submit backup attendance when requirements are met', function 
         'student_id' => $student->id,
         'status' => Attendance::STATUS_ARRIVED,
     ]);
+});
+
+test('student backup attendance also stores admin notification with uuid id', function () {
+    $admin = User::factory()->create([
+        'role' => User::ROLE_ADMIN,
+    ]);
+
+    [$student, $studentUser] = createStudentUserForBackupTests();
+
+    Setting::current()->update([
+        'backup_attendance_enabled' => true,
+        'backup_attendance_radius_meters' => 50,
+        'school_latitude' => -6.2000000,
+        'school_longitude' => 106.8166667,
+    ]);
+
+    Carbon::setTestNow(Carbon::create(2026, 4, 20, 6, 55, 0, 'Asia/Jakarta'));
+
+    $response = $this->actingAs($studentUser)
+        ->from(route('student.attendance.dashboard'))
+        ->post(route('student.attendance.store'), [
+            'latitude' => -6.2000100,
+            'longitude' => 106.8166700,
+            'face_descriptor' => validFaceDescriptorJson(),
+        ]);
+
+    $response->assertRedirect(route('student.attendance.dashboard'));
+    $response->assertSessionDoesntHaveErrors();
+
+    $notification = DB::table('notifications')
+        ->where('notifiable_id', $admin->id)
+        ->where('notifiable_type', User::class)
+        ->first();
+
+    expect($notification)->not->toBeNull()
+        ->and(strlen((string) $notification->id))->toBe(36);
 });
 
 test('student can register face descriptor from attendance dashboard', function () {

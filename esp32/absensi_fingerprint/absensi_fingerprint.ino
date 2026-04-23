@@ -6,8 +6,7 @@
 #include <TFT_eSPI.h>
 #include <time.h>
 
-// Smooth sans-serif fonts
-#include <Free_Fonts.h>
+// Use bitmap font for runtime text to keep spacing stable on all TFT_eSPI builds.
 
 // Hardware configuration (fixed, do not change)
 #define FP_RX_PIN 21
@@ -52,6 +51,28 @@ const int SETUP_FIELD_COUNT = 4;
 const int SETUP_BUTTON_COUNT = 8;
 const int SETUP_KEY_ROWS = 4;
 const int SETUP_KEY_COLS = 10;
+const int SETUP_HEADER_H = 36;
+const int SETUP_FIELD_X = 10;
+const int SETUP_FIELD_TOP = 40;
+const int SETUP_FIELD_W_MARGIN = 20;
+const int SETUP_FIELD_H = 24;
+const int SETUP_FIELD_GAP = 3;
+const int SETUP_HELP_TEXT_Y = 152;
+const int SETUP_KEY_WIDTH = 44;
+const int SETUP_KEY_HEIGHT = 24;
+const int SETUP_KEY_GAP = 2;
+const int SETUP_KEY_START_X = 10;
+const int SETUP_KEY_START_Y = 164;
+const int SETUP_ACTION_BUTTON_WIDTH = 56;
+const int SETUP_ACTION_BUTTON_HEIGHT = 28;
+const int SETUP_ACTION_BUTTON_GAP = 2;
+const int SETUP_ACTION_ROW_Y = 268;
+const int SETUP_ACTION_START_X = 9;
+const int SETUP_NOTICE_X = 10;
+const int SETUP_NOTICE_Y = 298;
+const int SETUP_NOTICE_H = 20;
+const int UI_BITMAP_CHAR_W = 6;
+const int UI_BITMAP_CHAR_H = 8;
 const char* SETUP_KEYBOARD_LAYOUT[SETUP_KEY_ROWS] = {
     "1234567890",
     "qwertyuiop",
@@ -165,6 +186,7 @@ void drawWifiIcon(uint16_t color);
 void drawEndpointIcon(uint16_t color);
 void drawDashboardLayout();
 void drawCardFrame(int x, int y, int w, int h, const String& title);
+void useBitmapFont(uint8_t size = 1);
 void drawConfigButton(bool pressed);
 bool isConfigButtonArea(uint16_t x, uint16_t y);
 void refreshLcdStatus();
@@ -176,6 +198,8 @@ void showAlertOnLcd(const String& title, const String& details, uint16_t color);
 void splitToTwoLines(const String& text, String& line1, String& line2);
 String shortenText(const String& text, int maxLength);
 void updateClockOnLcd();
+void showReadyForAttendance(const String& context = "");
+bool isLikelyHtmlResponse(const String& payload);
 
 void loadConfig();
 void saveConfig(const DeviceConfig& config);
@@ -219,7 +243,7 @@ void postAttendance(int userId);
 void pollEnrollRequest();
 int extractFingerprintId(const String& json);
 bool getFingerprintEnroll(int id);
-void postEnrollDone(int fingerprintId, const char* status);
+bool postEnrollDone(int fingerprintId, const char* status);
 String extractJsonString(const String& json, const String& key, int fromIndex = 0);
 
 void setup()
@@ -242,8 +266,7 @@ void setup()
     }
 
     if (wifiReady) {
-        setModeOnLcd("IDLE");
-        showAlertOnLcd("Siap", "Tempel sidik jari untuk absensi", UI_OK);
+        showReadyForAttendance();
     } else {
         setModeOnLcd("WIFI OFFLINE");
         showAlertOnLcd("WiFi Offline", "Tahan tombol SETUP untuk ubah WiFi/endpoint", UI_WARN);
@@ -262,7 +285,7 @@ void loop()
             showAlertOnLcd("Clear DB", "Menghapus semua data sidik jari...", UI_WARN);
             finger.emptyDatabase();
             Serial.println("Fingerprint database cleared.");
-            showAlertOnLcd("Clear DB", "Database sidik jari berhasil dikosongkan", UI_OK);
+            showReadyForAttendance("Database sidik jari kosong");
         }
     }
 
@@ -296,6 +319,7 @@ void initDisplay()
 {
     tft.begin();
     tft.setRotation(1); // 480x320 landscape
+    tft.setTextWrap(false, false);
 
     for (int y = 0; y < LCD_HEIGHT; y += 8) {
         uint8_t r = 6 + (y / 10);
@@ -363,10 +387,10 @@ void drawDashboardLayout()
     // Subtle bottom border
     tft.drawFastHLine(0, HEADER_H, lcdWidth, tft.color565(40, 120, 180));
 
-    // App name (smooth font)
-    tft.setFreeFont(FSB12);
+    // App name in stable bitmap font
+    useBitmapFont(2);
     tft.setTextColor(TFT_WHITE);
-    tft.setCursor(14, 28);
+    tft.setCursor(14, 10);
     tft.print("Sihadir");
 
     // --- Header right side: WiFi icon | Endpoint icon | Clock | Setup btn ---
@@ -410,9 +434,9 @@ void drawDashboardLayout()
     tft.fillRoundRect(messagePanelX, messagePanelY, messagePanelW, messagePanelH, 12, UI_CARD);
     tft.drawRoundRect(messagePanelX, messagePanelY, messagePanelW, messagePanelH, 12, UI_CARD_BORDER);
 
-    tft.setFreeFont(FSS9);
+    useBitmapFont(1);
     tft.setTextColor(UI_ACCENT);
-    tft.setCursor(messagePanelX + 14, messagePanelY + 18);
+    tft.setCursor(messagePanelX + 14, messagePanelY + 10);
     tft.print("Notifications");
 
     lcdClockText = "";
@@ -424,10 +448,17 @@ void drawCardFrame(int x, int y, int w, int h, const String& title)
     tft.fillRoundRect(x, y, w, h, 12, UI_CARD);
     tft.drawRoundRect(x, y, w, h, 12, UI_CARD_BORDER);
 
-    tft.setFreeFont(FSS9);
+    useBitmapFont(1);
     tft.setTextColor(UI_ACCENT, UI_CARD);
-    tft.setCursor(x + 12, y + 16);
+    tft.setCursor(x + 12, y + 8);
     tft.print(title);
+}
+
+void useBitmapFont(uint8_t size)
+{
+    tft.setFreeFont(nullptr);
+    tft.setTextFont(1);
+    tft.setTextSize(size);
 }
 
 void drawConfigButton(bool pressed)
@@ -441,7 +472,7 @@ void drawConfigButton(bool pressed)
 
     tft.fillRoundRect(x, y, w, h, 13, bgColor);
 
-    tft.setTextSize(1);
+    useBitmapFont(1);
     tft.setTextColor(TFT_WHITE, bgColor);
     tft.setCursor(x + 14, y + 9);
     tft.print("SETUP");
@@ -482,10 +513,10 @@ void setModeOnLcd(const String& mode)
     int h = cardHeight - 30;
 
     tft.fillRect(x, y, w, h, UI_CARD);
-    tft.setFreeFont(FSB12);
+    useBitmapFont(2);
     tft.setTextColor(0xFFE0, UI_CARD);
-    tft.setCursor(x + 4, y + 22);
-    tft.print(shortenText(mode, 14));
+    tft.setCursor(x + 4, y + 8);
+    tft.print(shortenText(mode, 16));
 }
 
 void updateWifiOnLcd()
@@ -566,9 +597,9 @@ void updateLastFingerprintOnLcd(int fingerprintId)
 
     tft.fillRect(x, y, w, h, UI_CARD);
 
-    tft.setFreeFont(FSB12);
+    useBitmapFont(2);
     tft.setTextColor(TFT_CYAN, UI_CARD);
-    tft.setCursor(x + 4, y + 22);
+    tft.setCursor(x + 4, y + 8);
 
     if (fingerprintId > 0) {
         tft.print(fingerprintId);
@@ -595,18 +626,58 @@ void showAlertOnLcd(const String& title, const String& details, uint16_t color)
     String line2;
     splitToTwoLines(details, line1, line2);
 
-    tft.setFreeFont(FSB12);
+    useBitmapFont(2);
     tft.setTextColor(color, UI_CARD);
-    tft.setCursor(messagePanelX + 20, messagePanelY + 48);
-    tft.print(shortenText(title, 28));
+    tft.setCursor(messagePanelX + 20, messagePanelY + 34);
+    tft.print(shortenText(title, 24));
 
-    tft.setFreeFont(FSS9);
+    useBitmapFont(1);
     tft.setTextColor(TFT_WHITE, UI_CARD);
-    tft.setCursor(messagePanelX + 20, messagePanelY + 72);
-    tft.print(shortenText(line1, 52));
+    tft.setCursor(messagePanelX + 20, messagePanelY + 58);
+    tft.print(shortenText(line1, 58));
 
-    tft.setCursor(messagePanelX + 20, messagePanelY + 90);
-    tft.print(shortenText(line2, 52));
+    tft.setCursor(messagePanelX + 20, messagePanelY + 74);
+    tft.print(shortenText(line2, 58));
+}
+
+void showReadyForAttendance(const String& context)
+{
+    if (setupModeActive) {
+        return;
+    }
+
+    if (WiFi.status() != WL_CONNECTED) {
+        setModeOnLcd("WIFI OFFLINE");
+        showAlertOnLcd("WiFi Offline", "Tahan tombol SETUP untuk ubah WiFi/endpoint", UI_WARN);
+        return;
+    }
+
+    String detail = "Tempel sidik jari untuk absensi";
+
+    if (context.length() > 0) {
+        detail = context + " | " + detail;
+    }
+
+    setModeOnLcd("IDLE");
+    showAlertOnLcd("Siap", detail, UI_OK);
+}
+
+bool isLikelyHtmlResponse(const String& payload)
+{
+    if (payload.length() == 0) {
+        return false;
+    }
+
+    int firstTagIndex = payload.indexOf('<');
+
+    if (firstTagIndex < 0 || firstTagIndex > 3) {
+        return false;
+    }
+
+    String sample = payload.substring(firstTagIndex, min(static_cast<unsigned int>(payload.length()), 32U));
+    sample.toLowerCase();
+
+    return sample.startsWith("<!doctype html") || sample.startsWith("<html");
 }
 
 void splitToTwoLines(const String& text, String& line1, String& line2)
@@ -725,7 +796,7 @@ void updateClockOnLcd()
 
     tft.fillRoundRect(clockWidgetX, clockWidgetY, clockWidgetW, clockWidgetH, 12, bgColor);
 
-    tft.setTextSize(2);
+    useBitmapFont(2);
     tft.setTextColor(clockColor, bgColor);
     tft.setCursor(clockWidgetX + 4, clockWidgetY + 5);
     tft.print(clockText);
@@ -913,6 +984,7 @@ void probeEndpoint(bool forced)
     http.begin(url);
     http.setTimeout(3000);
     http.addHeader("Authorization", String("Bearer ") + deviceConfig.apiToken);
+    http.addHeader("Accept", "application/json");
 
     int httpCode = http.GET();
     http.end();
@@ -1050,40 +1122,28 @@ void stopSetupMode()
 
 void configureSetupButtons()
 {
-    const int buttonWidth = 56;
-    const int buttonHeight = 28;
-    const int gap = 2;
-    const int rowY = 268;
-    const int startX = 9;
-
     const char* labels[SETUP_BUTTON_COUNT] = {
         "SHIFT", "SPACE", "BKSP", "CLEAR", "_", "@", "SAVE", "EXIT"
     };
 
     for (int i = 0; i < SETUP_BUTTON_COUNT; i++) {
-        setupButtons[i].x = startX + (i * (buttonWidth + gap));
-        setupButtons[i].y = rowY;
-        setupButtons[i].w = buttonWidth;
-        setupButtons[i].h = buttonHeight;
+        setupButtons[i].x = SETUP_ACTION_START_X + (i * (SETUP_ACTION_BUTTON_WIDTH + SETUP_ACTION_BUTTON_GAP));
+        setupButtons[i].y = SETUP_ACTION_ROW_Y;
+        setupButtons[i].w = SETUP_ACTION_BUTTON_WIDTH;
+        setupButtons[i].h = SETUP_ACTION_BUTTON_HEIGHT;
         setupButtons[i].label = labels[i];
     }
 }
 
 void configureSetupKeyboardButtons()
 {
-    const int keyWidth = 44;
-    const int keyHeight = 24;
-    const int gap = 2;
-    const int startX = 10;
-    const int startY = 164;
-
     for (int row = 0; row < SETUP_KEY_ROWS; row++) {
         for (int col = 0; col < SETUP_KEY_COLS; col++) {
             int keyIndex = row * SETUP_KEY_COLS + col;
-            setupKeyButtons[keyIndex].x = startX + (col * (keyWidth + gap));
-            setupKeyButtons[keyIndex].y = startY + (row * (keyHeight + gap));
-            setupKeyButtons[keyIndex].w = keyWidth;
-            setupKeyButtons[keyIndex].h = keyHeight;
+            setupKeyButtons[keyIndex].x = SETUP_KEY_START_X + (col * (SETUP_KEY_WIDTH + SETUP_KEY_GAP));
+            setupKeyButtons[keyIndex].y = SETUP_KEY_START_Y + (row * (SETUP_KEY_HEIGHT + SETUP_KEY_GAP));
+            setupKeyButtons[keyIndex].w = SETUP_KEY_WIDTH;
+            setupKeyButtons[keyIndex].h = SETUP_KEY_HEIGHT;
             setupKeyButtons[keyIndex].label = nullptr;
         }
     }
@@ -1093,13 +1153,13 @@ void drawSetupEditor()
 {
     tft.fillScreen(UI_BG);
 
-    tft.fillRect(0, 0, lcdWidth, 36, UI_HEADER);
-    tft.setTextSize(2);
+    tft.fillRect(0, 0, lcdWidth, SETUP_HEADER_H, UI_HEADER);
+    useBitmapFont(2);
     tft.setTextColor(TFT_WHITE, UI_HEADER);
     tft.setCursor(10, 10);
     tft.print("Setup Lokal Device");
 
-    tft.setTextSize(1);
+    useBitmapFont(1);
     tft.setTextColor(TFT_WHITE, UI_HEADER);
     tft.setCursor(lcdWidth - 140, 12);
     tft.print(String("Touch CS: ") + TOUCHSCREEN_CS_PIN);
@@ -1108,9 +1168,9 @@ void drawSetupEditor()
         drawSetupFieldRow(fieldIndex);
     }
 
-    tft.setTextSize(1);
+    useBitmapFont(1);
     tft.setTextColor(UI_ACCENT, UI_CARD);
-    tft.setCursor(10, 154);
+    tft.setCursor(10, SETUP_HELP_TEXT_Y);
     tft.print("Keyboard touch: pilih field lalu ketik karakter");
 
     drawSetupKeyboard();
@@ -1132,14 +1192,15 @@ void drawSetupEditor()
         tft.fillRoundRect(button.x, button.y, button.w, button.h, 8, buttonColor);
         tft.drawRoundRect(button.x, button.y, button.w, button.h, 8, TFT_WHITE);
 
-        tft.setTextSize(1);
+        useBitmapFont(1);
         tft.setTextColor(TFT_WHITE, buttonColor);
         int labelLength = String(button.label).length();
-        int textX = button.x + ((button.w - (labelLength * 6)) / 2);
+        int textX = button.x + ((button.w - (labelLength * UI_BITMAP_CHAR_W)) / 2);
         if (textX < button.x + 2) {
             textX = button.x + 2;
         }
-        tft.setCursor(textX, button.y + 10);
+        int textY = button.y + ((button.h - UI_BITMAP_CHAR_H) / 2) + 1;
+        tft.setCursor(textX, textY);
         tft.print(button.label);
     }
 
@@ -1148,6 +1209,8 @@ void drawSetupEditor()
 
 void drawSetupKeyboard()
 {
+    useBitmapFont(1);
+
     for (int keyIndex = 0; keyIndex < SETUP_KEY_ROWS * SETUP_KEY_COLS; keyIndex++) {
         const SetupButton& keyButton = setupKeyButtons[keyIndex];
         char keyChar = resolveSetupKeyChar(keyIndex);
@@ -1163,9 +1226,10 @@ void drawSetupKeyboard()
         tft.drawRoundRect(keyButton.x, keyButton.y, keyButton.w, keyButton.h, 5, UI_CARD_BORDER);
 
         char keyLabel[2] = { keyChar, '\0' };
-        tft.setTextSize(1);
         tft.setTextColor(TFT_WHITE, keyColor);
-        tft.setCursor(keyButton.x + (keyButton.w / 2) - 3, keyButton.y + 8);
+        int labelX = keyButton.x + ((keyButton.w - UI_BITMAP_CHAR_W) / 2);
+        int labelY = keyButton.y + ((keyButton.h - UI_BITMAP_CHAR_H) / 2) + 1;
+        tft.setCursor(labelX, labelY);
         tft.print(keyLabel);
     }
 }
@@ -1176,10 +1240,10 @@ void drawSetupFieldRow(int fieldIndex)
         return;
     }
 
-    const int rowX = 10;
-    const int rowY = 44 + (fieldIndex * 30);
-    const int rowW = lcdWidth - 20;
-    const int rowH = 26;
+    const int rowX = SETUP_FIELD_X;
+    const int rowY = SETUP_FIELD_TOP + (fieldIndex * (SETUP_FIELD_H + SETUP_FIELD_GAP));
+    const int rowW = lcdWidth - SETUP_FIELD_W_MARGIN;
+    const int rowH = SETUP_FIELD_H;
 
     bool selected = fieldIndex == setupSelectedFieldIndex;
     uint16_t rowColor = selected ? tft.color565(24, 79, 106) : UI_CARD;
@@ -1187,28 +1251,28 @@ void drawSetupFieldRow(int fieldIndex)
     tft.fillRoundRect(rowX, rowY, rowW, rowH, 7, rowColor);
     tft.drawRoundRect(rowX, rowY, rowW, rowH, 7, selected ? UI_ACCENT : UI_CARD_BORDER);
 
-    tft.setTextSize(1);
+    useBitmapFont(1);
     tft.setTextColor(UI_ACCENT, rowColor);
-    tft.setCursor(rowX + 8, rowY + 4);
+    tft.setCursor(rowX + 8, rowY + 8);
     tft.print(setupFieldLabels[fieldIndex]);
 
     String preview = setupFieldPreviewValue(fieldIndex, *setupFieldValues[fieldIndex]);
     tft.setTextColor(TFT_WHITE, rowColor);
-    tft.setCursor(rowX + 160, rowY + 4);
-    tft.print(shortenText(preview, 49));
+    tft.setCursor(rowX + 162, rowY + 8);
+    tft.print(shortenText(preview, 48));
 }
 
 void drawSetupEditorNotice(const String& notice, uint16_t color)
 {
-    const int boxX = 10;
-    const int boxY = 298;
+    const int boxX = SETUP_NOTICE_X;
+    const int boxY = SETUP_NOTICE_Y;
     const int boxW = lcdWidth - 20;
-    const int boxH = 20;
+    const int boxH = SETUP_NOTICE_H;
 
     tft.fillRoundRect(boxX, boxY, boxW, boxH, 8, UI_CARD);
     tft.drawRoundRect(boxX, boxY, boxW, boxH, 8, color);
 
-    tft.setTextSize(1);
+    useBitmapFont(1);
     tft.setTextColor(color, UI_CARD);
     tft.setCursor(boxX + 8, boxY + 6);
     tft.print(shortenText(notice, 74));
@@ -1217,10 +1281,10 @@ void drawSetupEditorNotice(const String& notice, uint16_t color)
 int hitTestSetupField(uint16_t x, uint16_t y)
 {
     for (int fieldIndex = 0; fieldIndex < SETUP_FIELD_COUNT; fieldIndex++) {
-        int rowX = 10;
-        int rowY = 44 + (fieldIndex * 30);
-        int rowW = lcdWidth - 20;
-        int rowH = 26;
+        int rowX = SETUP_FIELD_X;
+        int rowY = SETUP_FIELD_TOP + (fieldIndex * (SETUP_FIELD_H + SETUP_FIELD_GAP));
+        int rowW = lcdWidth - SETUP_FIELD_W_MARGIN;
+        int rowH = SETUP_FIELD_H;
 
         if (x >= rowX && x <= rowX + rowW && y >= rowY && y <= rowY + rowH) {
             return fieldIndex;
@@ -1556,17 +1620,43 @@ void postAttendance(int userId)
     String url = buildApiUrl("/api/attendance");
 
     http.begin(url);
-    http.setTimeout(5000);
+    http.setTimeout(3500);
     http.addHeader("Authorization", String("Bearer ") + deviceConfig.apiToken);
     http.addHeader("Content-Type", "application/json");
+    http.addHeader("Accept", "application/json");
+
+    const char* responseHeaderKeys[] = { "Content-Type", "Location" };
+    http.collectHeaders(responseHeaderKeys, 2);
 
     String body = String("{\"user_id\":") + userId + "}";
     int httpCode = http.POST(body);
-    String response = http.getString();
+    String contentType = http.header("Content-Type");
+    String redirectLocation = http.header("Location");
+    bool jsonResponse = contentType.indexOf("application/json") >= 0 || contentType.indexOf("text/json") >= 0;
+
+    String response = "";
+
+    // Avoid downloading very large HTML payloads that slow down the UI.
+    if (jsonResponse || httpCode < 200 || httpCode >= 300) {
+        response = http.getString();
+    }
 
     Serial.print("POST /api/attendance code: ");
     Serial.println(httpCode);
-    Serial.println(response);
+
+    if (contentType.length() > 0) {
+        Serial.print("POST /api/attendance content-type: ");
+        Serial.println(contentType);
+    }
+
+    if (redirectLocation.length() > 0) {
+        Serial.print("POST /api/attendance location: ");
+        Serial.println(redirectLocation);
+    }
+
+    if (response.length() > 0) {
+        Serial.println(response);
+    }
 
     http.end();
 
@@ -1583,6 +1673,12 @@ void postAttendance(int userId)
         setEndpointState("ONLINE", "Attendance endpoint aktif", UI_OK);
     }
 
+    if (httpCode >= 200 && httpCode < 300 && !jsonResponse) {
+        showAlertOnLcd("Absensi Berhasil", "Data terkirim, server membalas non-JSON", UI_OK);
+        setModeOnLcd("IDLE");
+        return;
+    }
+
     String topStatus = extractJsonString(response, "status");
     String message = extractJsonString(response, "message");
     int userObjectIndex = response.indexOf("\"user\":");
@@ -1594,6 +1690,10 @@ void postAttendance(int userId)
     if (topStatus == "success") {
         String detail = message;
         String attendanceTime = getCurrentClockStamp();
+
+        if (detail.length() == 0) {
+            detail = "Absensi tercatat";
+        }
 
         if (userName.length() > 0) {
             detail = userName + " | " + detail;
@@ -1612,7 +1712,13 @@ void postAttendance(int userId)
         showAlertOnLcd("Absensi Berhasil", detail, UI_OK);
     } else {
         if (message.length() == 0) {
-            message = "Format response tidak valid";
+            if (isLikelyHtmlResponse(response)) {
+                message = "Server mengirim HTML, cek endpoint API";
+            } else if (redirectLocation.length() > 0) {
+                message = "Request redirect, cek URL endpoint";
+            } else {
+                message = "Format response tidak valid";
+            }
         }
 
         showAlertOnLcd("Absensi Gagal", message, UI_ERROR);
@@ -1633,6 +1739,7 @@ void pollEnrollRequest()
     http.begin(url);
     http.setTimeout(4000);
     http.addHeader("Authorization", String("Bearer ") + deviceConfig.apiToken);
+    http.addHeader("Accept", "application/json");
 
     int httpCode = http.GET();
     String response = http.getString();
@@ -1672,7 +1779,14 @@ void pollEnrollRequest()
     showAlertOnLcd("Enroll Pending", String("Menjalankan enroll ID ") + fingerprintId, TFT_YELLOW);
 
     bool enrollSuccess = getFingerprintEnroll(fingerprintId);
-    postEnrollDone(fingerprintId, enrollSuccess ? "success" : "failed");
+
+    if (enrollSuccess) {
+        postEnrollDone(fingerprintId, "success");
+        showReadyForAttendance("Enroll berhasil");
+        return;
+    }
+
+    postEnrollDone(fingerprintId, "failed");
     setModeOnLcd("IDLE");
 }
 
@@ -1775,10 +1889,10 @@ bool getFingerprintEnroll(int id)
     return false;
 }
 
-void postEnrollDone(int fingerprintId, const char* status)
+bool postEnrollDone(int fingerprintId, const char* status)
 {
     if (WiFi.status() != WL_CONNECTED) {
-        return;
+        return false;
     }
 
     HTTPClient http;
@@ -1788,6 +1902,7 @@ void postEnrollDone(int fingerprintId, const char* status)
     http.setTimeout(5000);
     http.addHeader("Authorization", String("Bearer ") + deviceConfig.apiToken);
     http.addHeader("Content-Type", "application/json");
+    http.addHeader("Accept", "application/json");
 
     String body = String("{\"fingerprint_id\":") + fingerprintId + ",\"status\":\"" + status + "\"}";
     int httpCode = http.POST(body);
@@ -1802,7 +1917,7 @@ void postEnrollDone(int fingerprintId, const char* status)
     if (httpCode <= 0) {
         showAlertOnLcd("Sync Enroll Gagal", "Status enroll tidak terkirim", UI_ERROR);
         setEndpointState("DOWN", "Gagal kirim enroll result", UI_ERROR);
-        return;
+        return false;
     }
 
     if (httpCode == 401 || httpCode == 403) {
@@ -1820,12 +1935,14 @@ void postEnrollDone(int fingerprintId, const char* status)
         }
 
         showAlertOnLcd("Sync Enroll", message, UI_OK);
+        return true;
     } else {
         if (message.length() == 0) {
             message = "Server menolak update enroll";
         }
 
         showAlertOnLcd("Sync Enroll Gagal", message, UI_ERROR);
+        return false;
     }
 }
 

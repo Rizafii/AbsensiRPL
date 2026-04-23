@@ -10,6 +10,7 @@ use App\Notifications\AttendanceSavedNotification;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
+use Throwable;
 
 class AttendanceService
 {
@@ -185,13 +186,12 @@ class AttendanceService
                 $checkInNotification['status'],
             );
 
-            $admins = User::where('role', User::ROLE_ADMIN)->get();
-            Notification::send($admins, new AttendanceSavedNotification(
+            $this->notifyAdminsAboutAttendance(
                 $checkInNotification['student_name'],
                 'check-in',
                 $checkInNotification['status'],
                 $checkInNotification['check_in_at'],
-            ));
+            );
         }
 
         if ($checkOutNotification !== null) {
@@ -201,16 +201,41 @@ class AttendanceService
                 $checkOutNotification['status'],
             );
 
-            $admins = User::where('role', User::ROLE_ADMIN)->get();
-            Notification::send($admins, new AttendanceSavedNotification(
+            $this->notifyAdminsAboutAttendance(
                 $checkOutNotification['student_name'],
                 'check-out',
                 $checkOutNotification['status'],
                 $checkOutNotification['check_out_at'],
-            ));
+            );
         }
 
         return $result;
+    }
+
+    private function notifyAdminsAboutAttendance(
+        string $studentName,
+        string $type,
+        string $status,
+        Carbon $time,
+    ): void {
+        try {
+            $admins = User::query()
+                ->where('role', User::ROLE_ADMIN)
+                ->get();
+
+            if ($admins->isEmpty()) {
+                return;
+            }
+
+            Notification::send($admins, new AttendanceSavedNotification(
+                $studentName,
+                $type,
+                $status,
+                $time,
+            ));
+        } catch (Throwable $exception) {
+            report($exception);
+        }
     }
 
     private function resolveArriveStatus(Carbon $now, Setting $setting): string
