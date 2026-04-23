@@ -46,7 +46,7 @@ jobs:
           port: 21
           protocol: ftp                               # ✅ Bukan method
           local-dir: ./                               # ✅ Bukan local_dir
-          server-dir: /domains/sihadir.smkn6solo.sch.id/AbsensiRPL/  # ✅ Bukan remote_dir
+          server-dir: /home/u611758919/domains/sihadir.smkn6solo.sch.id/AbsensiRPL/  # ✅ Bukan remote_dir
           exclude: |                                  # ✅ Format exclude berbeda
             **/.git*
             **/.env
