@@ -1,4 +1,4 @@
-name: Deploy Laravel to Hostinger
+name: Deploy Laravel (First Deploy - Force)
 
 on:
   push:
@@ -10,43 +10,35 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Checkout repo
-      - name: Checkout Repository
+      - name: Checkout
         uses: actions/checkout@v4
 
-      # 2. Setup Node (sesuai server)
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 20
 
-      # 3. Build frontend (Vite)
-      - name: Install & Build Frontend
+      - name: Build Frontend
         run: |
           npm install
           npm run build
 
-      # 4. Setup PHP
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
           php-version: 8.3
-          extensions: mbstring, bcmath, pdo, mysql
           tools: composer
 
-      # 5. Install dependency Laravel (production)
-      - name: Install Composer Dependencies
+      - name: Install Composer
         run: composer install --no-dev --optimize-autoloader
 
-      # 6. Cleanup file yang gak perlu dikirim
-      - name: Cleanup unnecessary files
+      - name: Cleanup
         run: |
           rm -rf node_modules
           rm -rf tests
           rm -rf .git
 
-      # 7. 🚀 Deploy ke Hostinger (git-ftp)
-      - name: Deploy to Hostinger
+      - name: 🚀 Deploy (FORCE)
         uses: SamKirkland/FTP-Deploy-Action@v3.1.1
         with:
           ftp-server: 145.223.108.5
@@ -56,6 +48,7 @@ jobs:
           git-ftp-args: >
             --remote-root /domains/sihadir.smkn6solo.sch.id/AbsensiRPL/
             --auto-init
+            --force
             --exclude-glob .git*
             --exclude-glob .env
             --exclude-glob node_modules/**
