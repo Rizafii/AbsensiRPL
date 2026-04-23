@@ -6,6 +6,9 @@
 #include <TFT_eSPI.h>
 #include <time.h>
 
+// Smooth sans-serif fonts
+#include <Free_Fonts.h>
+
 // Hardware configuration (fixed, do not change)
 #define FP_RX_PIN 21
 #define FP_TX_PIN 22
@@ -18,7 +21,7 @@
 
 const char* DEFAULT_WIFI_SSID = "RPL";
 const char* DEFAULT_WIFI_PASSWORD = "rplviska6";
-const char* DEFAULT_API_BASE_URL = "http://192.168.13.3:8000";
+const char* DEFAULT_API_BASE_URL = "https://sihadir.smkn6solo.sch.id";
 const char* DEFAULT_API_TOKEN = "jgk0advefk90gj4ngin4290";
 
 const unsigned long FINGER_SCAN_INTERVAL_MS = 250;
@@ -36,14 +39,14 @@ const uint16_t TOUCH_RAW_MIN = 200;
 const uint16_t TOUCH_RAW_MAX = 3800;
 const uint16_t TOUCH_RAW_Z_MIN = 200;
 
-const uint16_t UI_BG = 0x10A2;
-const uint16_t UI_CARD = 0x18E3;
-const uint16_t UI_CARD_BORDER = 0x3186;
-const uint16_t UI_HEADER = 0x01CF;
-const uint16_t UI_ACCENT = 0x04FF;
-const uint16_t UI_OK = TFT_GREEN;
-const uint16_t UI_WARN = TFT_ORANGE;
-const uint16_t UI_ERROR = TFT_RED;
+const uint16_t UI_BG = 0x1082;      // dark charcoal
+const uint16_t UI_CARD = 0x2104;     // soft dark card
+const uint16_t UI_CARD_BORDER = 0x39C7;
+const uint16_t UI_HEADER = 0x1926;   // deep dark header
+const uint16_t UI_ACCENT = 0x2D7F;   // vibrant cyan-blue
+const uint16_t UI_OK = 0x2EC8;       // modern green
+const uint16_t UI_WARN = 0xFD20;     // amber
+const uint16_t UI_ERROR = 0xF926;    // soft red
 
 const int SETUP_FIELD_COUNT = 4;
 const int SETUP_BUTTON_COUNT = 8;
@@ -119,11 +122,10 @@ int lcdWidth = LCD_WIDTH;
 int lcdHeight = LCD_HEIGHT;
 
 int cardWidth = 0;
-int wifiCardX = 0;
-int endpointCardX = 0;
-int topRowY = 0;
-int secondRowY = 0;
-int cardHeight = 84;
+int modeCardX = 0;
+int fingerCardX = 0;
+int cardsRowY = 0;
+int cardHeight = 70;
 int messagePanelX = 0;
 int messagePanelY = 0;
 int messagePanelW = 0;
@@ -132,6 +134,13 @@ int clockWidgetX = 0;
 int clockWidgetY = 0;
 int clockWidgetW = 0;
 int clockWidgetH = 0;
+
+// Header icon positions
+int wifiIconX = 0;
+int wifiIconY = 0;
+int endpointIconX = 0;
+int endpointIconY = 0;
+const int HEADER_H = 40;
 
 String lcdModeText = "";
 String lcdWifiText = "";
@@ -152,6 +161,8 @@ String endpointStateDetail = "Belum dicek";
 uint16_t endpointStateColor = UI_WARN;
 
 void initDisplay();
+void drawWifiIcon(uint16_t color);
+void drawEndpointIcon(uint16_t color);
 void drawDashboardLayout();
 void drawCardFrame(int x, int y, int w, int h, const String& title);
 void drawConfigButton(bool pressed);
@@ -243,6 +254,18 @@ void loop()
 {
     handleTouchInput();
 
+    // Serial command: send 'c' to clear fingerprint database
+    if (Serial.available() > 0) {
+        char cmd = Serial.read();
+        if (cmd == 'c' || cmd == 'C') {
+            Serial.println("Clearing fingerprint database...");
+            showAlertOnLcd("Clear DB", "Menghapus semua data sidik jari...", UI_WARN);
+            finger.emptyDatabase();
+            Serial.println("Fingerprint database cleared.");
+            showAlertOnLcd("Clear DB", "Database sidik jari berhasil dikosongkan", UI_OK);
+        }
+    }
+
     if (setupModeActive) {
         handleSetupEditorTouch();
         return;
@@ -293,49 +316,104 @@ void initDisplay()
     updateLastFingerprintOnLcd(-1);
 }
 
+void drawWifiIcon(uint16_t color)
+{
+    int cx = wifiIconX;
+    int cy = wifiIconY;
+    // Draw 3 arcs (simplified WiFi icon using concentric arc segments)
+    for (int r = 12; r >= 4; r -= 4) {
+        for (int a = -45; a <= 45; a += 3) {
+            float rad = a * PI / 180.0;
+            int px = cx + (int)(sin(rad) * r);
+            int py = cy - (int)(cos(rad) * r);
+            tft.drawPixel(px, py, color);
+            tft.drawPixel(px + 1, py, color);
+        }
+    }
+    // Base dot
+    tft.fillCircle(cx, cy, 2, color);
+}
+
+void drawEndpointIcon(uint16_t color)
+{
+    int cx = endpointIconX;
+    int cy = endpointIconY;
+    // Globe icon: circle + crosshairs
+    tft.drawCircle(cx, cy, 8, color);
+    tft.drawCircle(cx, cy, 7, color);
+    // Horizontal line
+    tft.drawFastHLine(cx - 8, cy, 17, color);
+    // Vertical line
+    tft.drawFastVLine(cx, cy - 8, 17, color);
+    // Ellipse arcs (simplified)
+    tft.drawCircle(cx, cy, 4, color);
+}
+
 void drawDashboardLayout()
 {
     tft.fillScreen(UI_BG);
 
-    tft.fillRect(0, 0, lcdWidth, 36, UI_HEADER);
-    tft.setTextSize(2);
-    tft.setTextColor(TFT_WHITE, UI_HEADER);
-    tft.setCursor(10, 10);
-    tft.print("Absensi Fingerprint");
+    // --- Gradient header ---
+    for (int y = 0; y < HEADER_H; y++) {
+        uint8_t r = 8 + (y * 2 / 3);
+        uint8_t g = 24 + (y / 2);
+        uint8_t b = 48 + y;
+        tft.drawFastHLine(0, y, lcdWidth, tft.color565(r, g, b));
+    }
+    // Subtle bottom border
+    tft.drawFastHLine(0, HEADER_H, lcdWidth, tft.color565(40, 120, 180));
 
-    clockWidgetW = 104;
-    clockWidgetH = 24;
-    clockWidgetX = lcdWidth - 224;
-    clockWidgetY = 6;
+    // App name (smooth font)
+    tft.setFreeFont(FSB12);
+    tft.setTextColor(TFT_WHITE);
+    tft.setCursor(14, 28);
+    tft.print("Sihadir");
 
-    tft.fillRoundRect(clockWidgetX, clockWidgetY, clockWidgetW, clockWidgetH, 8, tft.color565(6, 76, 112));
-    tft.drawRoundRect(clockWidgetX, clockWidgetY, clockWidgetW, clockWidgetH, 8, TFT_WHITE);
-
+    // --- Header right side: WiFi icon | Endpoint icon | Clock | Setup btn ---
+    // Positions: from right to left
+    // Setup button
     drawConfigButton(false);
 
+    // Clock widget
+    clockWidgetW = 80;
+    clockWidgetH = 24;
+    clockWidgetX = lcdWidth - 110 - clockWidgetW - 8;
+    clockWidgetY = (HEADER_H - clockWidgetH) / 2;
+
+    tft.fillRoundRect(clockWidgetX, clockWidgetY, clockWidgetW, clockWidgetH, 12, tft.color565(10, 40, 70));
+
+    // WiFi icon position (to left of clock)
+    wifiIconX = clockWidgetX - 30;
+    wifiIconY = HEADER_H / 2 + 3;
+    drawWifiIcon(UI_WARN);  // initially disconnected
+
+    // Endpoint icon position (to left of wifi)
+    endpointIconX = wifiIconX - 30;
+    endpointIconY = HEADER_H / 2;
+    drawEndpointIcon(UI_WARN);  // initially unknown
+
+    // --- Content area: 2 cards + notification panel ---
     cardWidth = (lcdWidth - 30) / 2;
-    wifiCardX = 10;
-    endpointCardX = wifiCardX + cardWidth + 10;
-    topRowY = 46;
-    secondRowY = topRowY + cardHeight + 10;
+    modeCardX = 10;
+    fingerCardX = modeCardX + cardWidth + 10;
+    cardsRowY = HEADER_H + 12;
 
-    drawCardFrame(wifiCardX, topRowY, cardWidth, cardHeight, "WiFi");
-    drawCardFrame(endpointCardX, topRowY, cardWidth, cardHeight, "Endpoint");
-    drawCardFrame(wifiCardX, secondRowY, cardWidth, cardHeight, "Mode");
-    drawCardFrame(endpointCardX, secondRowY, cardWidth, cardHeight, "Last Finger ID");
+    drawCardFrame(modeCardX, cardsRowY, cardWidth, cardHeight, "Mode");
+    drawCardFrame(fingerCardX, cardsRowY, cardWidth, cardHeight, "Last Finger ID");
 
+    // Notification panel fills rest
     messagePanelX = 10;
-    messagePanelY = secondRowY + cardHeight + 10;
+    messagePanelY = cardsRowY + cardHeight + 10;
     messagePanelW = lcdWidth - 20;
     messagePanelH = lcdHeight - messagePanelY - 10;
 
-    tft.fillRoundRect(messagePanelX, messagePanelY, messagePanelW, messagePanelH, 10, UI_CARD);
-    tft.drawRoundRect(messagePanelX, messagePanelY, messagePanelW, messagePanelH, 10, UI_CARD_BORDER);
+    tft.fillRoundRect(messagePanelX, messagePanelY, messagePanelW, messagePanelH, 12, UI_CARD);
+    tft.drawRoundRect(messagePanelX, messagePanelY, messagePanelW, messagePanelH, 12, UI_CARD_BORDER);
 
-    tft.setTextSize(1);
-    tft.setTextColor(UI_ACCENT, UI_CARD);
-    tft.setCursor(messagePanelX + 12, messagePanelY + 8);
-    tft.print("Live Notification");
+    tft.setFreeFont(FSS9);
+    tft.setTextColor(UI_ACCENT);
+    tft.setCursor(messagePanelX + 14, messagePanelY + 18);
+    tft.print("Notifications");
 
     lcdClockText = "";
     updateClockOnLcd();
@@ -343,39 +421,38 @@ void drawDashboardLayout()
 
 void drawCardFrame(int x, int y, int w, int h, const String& title)
 {
-    tft.fillRoundRect(x, y, w, h, 10, UI_CARD);
-    tft.drawRoundRect(x, y, w, h, 10, UI_CARD_BORDER);
+    tft.fillRoundRect(x, y, w, h, 12, UI_CARD);
+    tft.drawRoundRect(x, y, w, h, 12, UI_CARD_BORDER);
 
-    tft.setTextSize(1);
+    tft.setFreeFont(FSS9);
     tft.setTextColor(UI_ACCENT, UI_CARD);
-    tft.setCursor(x + 12, y + 8);
+    tft.setCursor(x + 12, y + 16);
     tft.print(title);
 }
 
 void drawConfigButton(bool pressed)
 {
-    const int w = 100;
-    const int h = 24;
-    const int x = lcdWidth - w - 10;
-    const int y = 6;
+    const int w = 90;
+    const int h = 26;
+    const int x = lcdWidth - w - 8;
+    const int y = (HEADER_H - h) / 2;
 
-    uint16_t bgColor = pressed ? tft.color565(20, 150, 220) : tft.color565(4, 90, 140);
+    uint16_t bgColor = pressed ? tft.color565(30, 130, 200) : tft.color565(14, 60, 100);
 
-    tft.fillRoundRect(x, y, w, h, 8, bgColor);
-    tft.drawRoundRect(x, y, w, h, 8, TFT_WHITE);
+    tft.fillRoundRect(x, y, w, h, 13, bgColor);
 
     tft.setTextSize(1);
     tft.setTextColor(TFT_WHITE, bgColor);
-    tft.setCursor(x + 18, y + 8);
-    tft.print("Tahan SETUP");
+    tft.setCursor(x + 14, y + 9);
+    tft.print("SETUP");
 }
 
 bool isConfigButtonArea(uint16_t x, uint16_t y)
 {
-    const int w = 100;
-    const int h = 24;
-    const int left = lcdWidth - w - 10;
-    const int top = 6;
+    const int w = 90;
+    const int h = 26;
+    const int left = lcdWidth - w - 8;
+    const int top = (HEADER_H - h) / 2;
     return x >= left && x <= left + w && y >= top && y <= top + h;
 }
 
@@ -399,16 +476,16 @@ void setModeOnLcd(const String& mode)
 
     lcdModeText = mode;
 
-    int x = wifiCardX + 10;
-    int y = secondRowY + 26;
+    int x = modeCardX + 10;
+    int y = cardsRowY + 24;
     int w = cardWidth - 20;
-    int h = cardHeight - 34;
+    int h = cardHeight - 30;
 
     tft.fillRect(x, y, w, h, UI_CARD);
-    tft.setTextSize(2);
-    tft.setTextColor(TFT_YELLOW, UI_CARD);
-    tft.setCursor(x + 2, y + 8);
-    tft.print(shortenText(mode, 16));
+    tft.setFreeFont(FSB12);
+    tft.setTextColor(0xFFE0, UI_CARD);
+    tft.setCursor(x + 4, y + 22);
+    tft.print(shortenText(mode, 14));
 }
 
 void updateWifiOnLcd()
@@ -439,22 +516,12 @@ void updateWifiOnLcd()
     lcdWifiDetail = wifiDetail;
     lcdWifiColor = wifiColor;
 
-    int x = wifiCardX + 10;
-    int y = topRowY + 26;
-    int w = cardWidth - 20;
-    int h = cardHeight - 34;
-
-    tft.fillRect(x, y, w, h, UI_CARD);
-
-    tft.setTextSize(2);
-    tft.setTextColor(wifiColor, UI_CARD);
-    tft.setCursor(x + 2, y + 4);
-    tft.print(wifiText);
-
-    tft.setTextSize(1);
-    tft.setTextColor(TFT_WHITE, UI_CARD);
-    tft.setCursor(x + 2, y + 30);
-    tft.print(shortenText(wifiDetail, 32));
+    // Redraw WiFi icon in header with updated color
+    // Clear icon area first
+    for (int dy = -14; dy <= 4; dy++) {
+        tft.drawFastHLine(wifiIconX - 14, wifiIconY + dy, 28, tft.color565(8 + ((wifiIconY + dy) * 2 / 3), 24 + ((wifiIconY + dy) / 2), 48 + (wifiIconY + dy)));
+    }
+    drawWifiIcon(wifiColor);
 }
 
 void updateEndpointOnLcd()
@@ -477,24 +544,11 @@ void updateEndpointOnLcd()
     lcdEndpointDetail = endpointDetail;
     lcdEndpointColor = endpointColor;
 
-    int x = endpointCardX + 10;
-    int y = topRowY + 26;
-    int w = cardWidth - 20;
-    int h = cardHeight - 34;
-
-    tft.fillRect(x, y, w, h, UI_CARD);
-
-    tft.fillCircle(x + 8, y + 12, 5, endpointColor);
-
-    tft.setTextSize(2);
-    tft.setTextColor(endpointColor, UI_CARD);
-    tft.setCursor(x + 20, y + 4);
-    tft.print(shortenText(endpointText, 14));
-
-    tft.setTextSize(1);
-    tft.setTextColor(TFT_WHITE, UI_CARD);
-    tft.setCursor(x + 2, y + 30);
-    tft.print(shortenText(endpointDetail, 32));
+    // Redraw Endpoint icon in header with updated color
+    for (int dy = -10; dy <= 10; dy++) {
+        tft.drawFastHLine(endpointIconX - 10, endpointIconY + dy, 20, tft.color565(8 + ((endpointIconY + dy) * 2 / 3), 24 + ((endpointIconY + dy) / 2), 48 + (endpointIconY + dy)));
+    }
+    drawEndpointIcon(endpointColor);
 }
 
 void updateLastFingerprintOnLcd(int fingerprintId)
@@ -505,16 +559,16 @@ void updateLastFingerprintOnLcd(int fingerprintId)
 
     lcdLastFingerprintId = fingerprintId;
 
-    int x = endpointCardX + 10;
-    int y = secondRowY + 26;
+    int x = fingerCardX + 10;
+    int y = cardsRowY + 24;
     int w = cardWidth - 20;
-    int h = cardHeight - 34;
+    int h = cardHeight - 30;
 
     tft.fillRect(x, y, w, h, UI_CARD);
 
-    tft.setTextSize(2);
+    tft.setFreeFont(FSB12);
     tft.setTextColor(TFT_CYAN, UI_CARD);
-    tft.setCursor(x + 2, y + 8);
+    tft.setCursor(x + 4, y + 22);
 
     if (fingerprintId > 0) {
         tft.print(fingerprintId);
@@ -533,25 +587,26 @@ void showAlertOnLcd(const String& title, const String& details, uint16_t color)
     lcdAlertDetail = details;
     lcdAlertColor = color;
 
-    tft.fillRoundRect(messagePanelX + 3, messagePanelY + 20, messagePanelW - 6, messagePanelH - 24, 8, UI_CARD);
-    tft.fillRect(messagePanelX + 6, messagePanelY + 24, 5, messagePanelH - 32, color);
+    tft.fillRoundRect(messagePanelX + 3, messagePanelY + 24, messagePanelW - 6, messagePanelH - 28, 10, UI_CARD);
+    // Colored accent bar on left
+    tft.fillRoundRect(messagePanelX + 8, messagePanelY + 30, 4, messagePanelH - 40, 2, color);
 
     String line1;
     String line2;
     splitToTwoLines(details, line1, line2);
 
-    tft.setTextSize(2);
+    tft.setFreeFont(FSB12);
     tft.setTextColor(color, UI_CARD);
-    tft.setCursor(messagePanelX + 16, messagePanelY + 28);
-    tft.print(shortenText(title, 24));
+    tft.setCursor(messagePanelX + 20, messagePanelY + 48);
+    tft.print(shortenText(title, 28));
 
-    tft.setTextSize(1);
+    tft.setFreeFont(FSS9);
     tft.setTextColor(TFT_WHITE, UI_CARD);
-    tft.setCursor(messagePanelX + 16, messagePanelY + 54);
-    tft.print(shortenText(line1, 64));
+    tft.setCursor(messagePanelX + 20, messagePanelY + 72);
+    tft.print(shortenText(line1, 52));
 
-    tft.setCursor(messagePanelX + 16, messagePanelY + 68);
-    tft.print(shortenText(line2, 64));
+    tft.setCursor(messagePanelX + 20, messagePanelY + 90);
+    tft.print(shortenText(line2, 52));
 }
 
 void splitToTwoLines(const String& text, String& line1, String& line2)
@@ -666,14 +721,13 @@ void updateClockOnLcd()
     lcdClockText = clockText;
     lcdClockColor = clockColor;
 
-    uint16_t bgColor = clockSynced ? tft.color565(6, 76, 112) : tft.color565(96, 66, 17);
+    uint16_t bgColor = clockSynced ? tft.color565(10, 40, 70) : tft.color565(80, 50, 10);
 
-    tft.fillRoundRect(clockWidgetX, clockWidgetY, clockWidgetW, clockWidgetH, 8, bgColor);
-    tft.drawRoundRect(clockWidgetX, clockWidgetY, clockWidgetW, clockWidgetH, 8, TFT_WHITE);
+    tft.fillRoundRect(clockWidgetX, clockWidgetY, clockWidgetW, clockWidgetH, 12, bgColor);
 
     tft.setTextSize(2);
     tft.setTextColor(clockColor, bgColor);
-    tft.setCursor(clockWidgetX + 4, clockWidgetY + 6);
+    tft.setCursor(clockWidgetX + 4, clockWidgetY + 5);
     tft.print(clockText);
 }
 
