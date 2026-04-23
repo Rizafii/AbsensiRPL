@@ -1,4 +1,4 @@
-name: Deploy Laravel (First Deploy - Force)
+name: Deploy Laravel (Production)
 
 on:
   push:
@@ -38,7 +38,7 @@ jobs:
           rm -rf tests
           rm -rf .git
 
-      - name: 🚀 Deploy (FORCE)
+      - name: 🚀 Deploy (Incremental)
         uses: SamKirkland/FTP-Deploy-Action@v3.1.1
         with:
           ftp-server: 145.223.108.5
@@ -47,8 +47,6 @@ jobs:
           local-dir: ./
           git-ftp-args: >
             --remote-root /domains/sihadir.smkn6solo.sch.id/AbsensiRPL/
-            --auto-init
-            --force
             --exclude-glob .git*
             --exclude-glob .env
             --exclude-glob node_modules/**
