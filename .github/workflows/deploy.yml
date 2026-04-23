@@ -1,45 +1,46 @@
-name: Deploy to Hostinger (Laravel)
+name: Deploy to Hostinger
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout
-      uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-    # 🔹 Build Vite (React/Tailwind)
-    - name: Setup Node
-      uses: actions/setup-node@v4
-      with:
-        node-version: 18
+      # Build frontend
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
 
-    - name: Install & Build Frontend
-      run: |
-        npm install
-        npm run build
+      - name: Install & Build
+        run: |
+          npm install
+          npm run build
 
-    # 🔹 Install Composer (tanpa dev)
-    - name: Setup PHP
-      uses: shivammathur/setup-php@v2
-      with:
-        php-version: 8.2
+      # Setup PHP
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: 8.2
 
-    - name: Install Dependencies
-      run: composer install --no-dev --optimize-autoloader
+      - name: Install Composer
+        run: composer install --no-dev --optimize-autoloader
 
-    # 🔹 Deploy ke Hostinger via FTP
-    - name: Deploy via FTP
-  uses: SamKirkland/FTP-Deploy-Action@v3.1.1
-  with:
-    server: 145.223.108.5
-    username: ${{ secrets.FTP_USERNAME }}
-    password: ${{ secrets.FTP_PASSWORD }}
-    port: 21
-    protocol: ftp
-    local-dir: ./
-    server-dir: /domains/sihadir.smkn6solo.sch.id/AbsensiRPL/
+      # 🚀 Deploy FTP (INI YANG TADI ERROR)
+      - name: Deploy via FTP
+        uses: SamKirkland/FTP-Deploy-Action@v3.1.1
+        with:
+          server: 145.223.108.5
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          port: 21
+          protocol: ftp
+          local-dir: ./
+          server-dir: /domains/sihadir.smkn6solo.sch.id/AbsensiRPL/
