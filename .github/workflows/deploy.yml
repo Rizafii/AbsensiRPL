@@ -1,4 +1,4 @@
-name: Deploy Laravel to Hostinger
+name: Deploy Laravel (NORMAL)
 
 on:
   push:
@@ -10,51 +10,46 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Checkout
       - name: Checkout
         uses: actions/checkout@v4
 
-      # 2. Setup Node
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 20
 
-      # 3. Build frontend
       - name: Build Frontend
         run: |
           npm install
           npm run build
 
-      # 4. Setup PHP
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
           php-version: 8.3
 
-      # 5. Install Composer
       - name: Install Composer
         run: composer install --no-dev --optimize-autoloader
 
-      # 6. Cleanup
       - name: Cleanup
         run: |
           rm -rf node_modules
           rm -rf tests
           rm -rf .git
 
-      # 7. 🚀 Deploy (FTP STABLE)
-      - name: Deploy to Hostinger
+      - name: 🚀 Deploy
         uses: SamKirkland/FTP-Deploy-Action@v2.0.0
         with:
-          ftp-server: 145.223.108.5
-          ftp-username: ${{ secrets.FTP_USERNAME }}
-          ftp-password: ${{ secrets.FTP_PASSWORD }}
-          local-dir: ./
-          server-dir: /domains/sihadir.smkn6solo.sch.id/AbsensiRPL/
-          exclude: |
-            **/.git*
-            **/.env
-            **/node_modules/**
-            **/tests/**
-            **/storage/logs/**
+          ftp_server: 145.223.108.5
+          ftp_username: ${{ secrets.FTP_USERNAME }}
+          ftp_password: ${{ secrets.FTP_PASSWORD }}
+          method: ftp
+          port: 21
+          local_dir: ./
+          remote_dir: /domains/sihadir.smkn6solo.sch.id/AbsensiRPL/
+          args: >
+            --exclude-glob .git*
+            --exclude-glob .env
+            --exclude-glob node_modules/**
+            --exclude-glob tests/**
+            --exclude-glob storage/logs/**
