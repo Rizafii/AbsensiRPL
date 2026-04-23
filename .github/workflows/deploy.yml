@@ -34,7 +34,7 @@ jobs:
 
     # 🔹 Deploy ke Hostinger via FTP
     - name: Deploy via FTP
-      uses: SamKirkland/FTP-Deploy-Action@v4
+    uses: SamKirkland/FTP-Deploy-Action@v3.1.1
       with:
         server: 145.223.108.5
         username: ${{ secrets.FTP_USERNAME }}
