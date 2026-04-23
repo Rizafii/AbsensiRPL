@@ -181,7 +181,7 @@ test('student can submit backup attendance when requirements are met', function 
     ]);
 });
 
-test('student backup attendance also stores admin notification with uuid id', function () {
+test('student backup attendance also stores admin notification with integer id', function () {
     $admin = User::factory()->create([
         'role' => User::ROLE_ADMIN,
     ]);
@@ -214,7 +214,7 @@ test('student backup attendance also stores admin notification with uuid id', fu
         ->first();
 
     expect($notification)->not->toBeNull()
-        ->and(strlen((string) $notification->id))->toBe(36);
+        ->and((int) $notification->id)->toBeGreaterThan(0);
 });
 
 test('student can register face descriptor from attendance dashboard', function () {
