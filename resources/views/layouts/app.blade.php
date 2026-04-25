@@ -31,7 +31,7 @@
             @include('layouts.sidebar')
 
             {{-- Main Content Area --}}
-            <div class="flex-1 flex flex-col min-h-screen transition-all duration-300 lg:ml-64">
+            <div class="flex-1 flex flex-col min-w-0 min-h-screen transition-all duration-300 lg:ml-64">
                 {{-- Top Bar --}}
                 <header class="sticky top-0 z-50 flex h-16 items-center gap-4 border-b border-slate-200 bg-white px-4 sm:px-6 lg:px-8">
                     {{-- Mobile menu toggle --}}
@@ -207,7 +207,7 @@
                 </header>
 
                 {{-- Page Content --}}
-                <main class="flex-1 p-4 sm:p-6 lg:p-8">
+                <main class="flex-1 min-w-0 p-4 sm:p-6 lg:p-8">
                     {{ $slot }}
                 </main>
 
