@@ -207,7 +207,7 @@
                 </header>
 
                 {{-- Page Content --}}
-                <main class="flex-1 min-w-0 p-4 sm:p-6 lg:p-8">
+                <main class="flex-1 min-w-0 p-4 sm:p-6 lg:p-8 max-[1366px]:[zoom:0.85]">
                     {{ $slot }}
                 </main>
 
