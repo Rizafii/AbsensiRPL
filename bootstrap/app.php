@@ -18,6 +18,16 @@ return Application::configure(basePath: dirname(__DIR__))
             'api.token' => EnsureApiToken::class,
             'role' => EnsureUserRole::class,
         ]);
+
+        $middleware->redirectGuestsTo('/login');
+
+        $middleware->redirectUsersTo(function () {
+            if (auth()->check() && auth()->user()->isStudent()) {
+                return route('student.attendance.dashboard', absolute: false);
+            }
+
+            return route('dashboard', absolute: false);
+        });
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //
