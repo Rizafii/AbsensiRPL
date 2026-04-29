@@ -133,12 +133,12 @@
                         <div class="space-y-4">
                             <x-bladewind::alert type="info" show_close_icon="false" class="!mb-0">
                                 <p id="modal_face_hint" class="text-sm">
-                                    Posisikan wajah di dalam frame lalu klik Verifikasi Wajah.
+                                    Posisikan wajah di dalam frame. Verifikasi akan berjalan otomatis (Berkedip untuk Liveness).
                                 </p>
                             </x-bladewind::alert>
 
                             <div class="relative overflow-hidden rounded-xl border border-slate-200 bg-slate-950">
-                                <video id="face_camera_preview_modal" class="h-72 w-full object-cover" autoplay muted playsinline></video>
+                                <video id="face_camera_preview_modal" class="h-72 w-full object-cover scale-x-[-1]" autoplay muted playsinline></video>
                                 <div class="pointer-events-none absolute inset-0 flex items-center justify-center">
                                     <div class="h-56 w-40 rounded-[999px] border-2 border-dashed border-white/90"></div>
                                 </div>
@@ -158,7 +158,7 @@
                                 </x-bladewind::button>
 
                                 <x-bladewind::button id="confirm_face_recognition_button" color="blue"
-                                    uppercasing="false" disabled="true">
+                                    uppercasing="false" disabled="true" class="hidden">
                                     Verifikasi Wajah
                                 </x-bladewind::button>
                             </div>
