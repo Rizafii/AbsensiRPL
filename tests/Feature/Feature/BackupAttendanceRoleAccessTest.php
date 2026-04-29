@@ -50,7 +50,7 @@ test('admin dashboard and student dashboard are protected by role middleware', f
 
     $this->actingAs($admin)
         ->get(route('student.attendance.dashboard'))
-        ->assertForbidden();
+        ->assertRedirect(route('dashboard'));
 
     $this->actingAs($studentUser)
         ->get(route('student.attendance.dashboard'))
@@ -59,7 +59,7 @@ test('admin dashboard and student dashboard are protected by role middleware', f
 
     $this->actingAs($studentUser)
         ->get(route('dashboard'))
-        ->assertForbidden();
+        ->assertRedirect(route('student.attendance.dashboard'));
 });
 
 test('admin can activate backup attendance from dashboard', function () {

@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\User;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -22,9 +23,18 @@ class EnsureUserRole
         }
 
         if ($roles !== [] && ! in_array($user->role, $roles, true)) {
-            abort(403);
+            return $this->redirectToRoleHome($user->role);
         }
 
         return $next($request);
+    }
+
+    private function redirectToRoleHome(string $role): Response
+    {
+        return match ($role) {
+            User::ROLE_ADMIN => redirect()->route('dashboard'),
+            User::ROLE_STUDENT => redirect()->route('student.attendance.dashboard'),
+            default => abort(403),
+        };
     }
 }
