@@ -149,8 +149,8 @@ async function openFaceRecognitionModal(flow) {
 
     if (modalHintElement !== null) {
         modalHintElement.textContent = flow === 'attendance'
-            ? 'Koordinat sudah valid. Posisikan wajah di dalam frame lalu klik Verifikasi Wajah.'
-            : 'Posisikan wajah di dalam frame lalu klik Verifikasi Wajah untuk mendaftarkan template.';
+            ? 'Koordinat valid. Posisikan wajah di dalam frame. Verifikasi berjalan otomatis (Berkedip untuk Liveness).'
+            : 'Posisikan wajah di dalam frame. Verifikasi otomatis berjalan untuk mendaftar (Berkedip untuk Liveness).';
     }
 
     updateText(modalStatusMessageElement, 'Menyalakan kamera...', 'neutral');
@@ -167,8 +167,10 @@ async function openFaceRecognitionModal(flow) {
         updateText(modalStatusMessageElement, 'Memuat model face recognition.', 'neutral');
         await ensureFaceApiReady();
 
-        updateText(modalStatusMessageElement, 'Kamera siap. Pastikan wajah berada di dalam frame.', 'success');
-        confirmFaceButton.disabled = false;
+        updateText(modalStatusMessageElement, 'Kamera siap. Mohon berkedip untuk verifikasi liveness otomatis.', 'success');
+        
+        // Auto start verification process
+        confirmFaceRecognition();
     } catch (error) {
         closeFaceRecognitionModal();
 
@@ -185,8 +187,7 @@ async function confirmFaceRecognition() {
         return;
     }
 
-    confirmFaceButton.disabled = true;
-    updateText(modalStatusMessageElement, 'Mendeteksi wajah...', 'neutral');
+    updateText(modalStatusMessageElement, 'Menunggu kedipan mata (liveness detection)...', 'neutral');
 
     try {
         const capturedDescriptor = await captureFaceDescriptor(cameraPreviewElement);
@@ -344,20 +345,78 @@ async function captureFaceDescriptor(cameraPreviewElement) {
         scoreThreshold: 0.5,
     });
 
-    for (let attempt = 0; attempt < 16; attempt += 1) {
-        const result = await faceApi
-            .detectSingleFace(cameraPreviewElement, detectionOptions)
-            .withFaceLandmarks()
-            .withFaceDescriptor();
+    return new Promise((resolve, reject) => {
+        let hasBlinked = false;
+        let isStopped = false;
+        let timeoutTimer;
 
-        if (result !== undefined) {
-            return Array.from(result.descriptor);
-        }
+        const stopLoop = () => {
+            isStopped = true;
+            clearTimeout(timeoutTimer);
+        };
 
-        await delay(250);
-    }
+        const checkFrame = async () => {
+            if (isStopped || activeMediaStream === null || activeFlow === null) {
+                stopLoop();
+                reject(new Error('Kamera dihentikan atau proses dibatalkan.'));
+                return;
+            }
 
-    throw new Error('Wajah tidak terdeteksi. Pastikan pencahayaan cukup dan wajah menghadap kamera.');
+            try {
+                const result = await faceApi
+                    .detectSingleFace(cameraPreviewElement, detectionOptions)
+                    .withFaceLandmarks()
+                    .withFaceDescriptor();
+
+                if (result !== undefined) {
+                    const landmarks = result.landmarks;
+                    const leftEye = landmarks.getLeftEye();
+                    const rightEye = landmarks.getRightEye();
+
+                    const leftEAR = calculateEAR(leftEye);
+                    const rightEAR = calculateEAR(rightEye);
+                    const ear = (leftEAR + rightEAR) / 2.0;
+
+                    if (ear < 0.25) {
+                        hasBlinked = true;
+                        updateText(modalStatusMessageElement, 'Kedipan terdeteksi. Menyelesaikan verifikasi...', 'success');
+                    }
+
+                    if (hasBlinked && ear > 0.28) {
+                        stopLoop();
+                        resolve(Array.from(result.descriptor));
+                        return;
+                    }
+                }
+            } catch (error) {
+                // Skip frame on error
+            }
+
+            // Schedule next frame
+            setTimeout(checkFrame, 50);
+        };
+
+        // Start the loop
+        checkFrame();
+
+        timeoutTimer = setTimeout(() => {
+            if (!isStopped) {
+                stopLoop();
+                reject(new Error('Waktu habis. Wajah tidak terdeteksi atau Anda tidak berkedip. Pastikan wajah menghadap kamera dengan jelas.'));
+            }
+        }, 30000); // 30 seconds timeout
+    });
+}
+
+function calculateEAR(eye) {
+    const d1 = calculateEuclideanDistancePoint(eye[1], eye[5]);
+    const d2 = calculateEuclideanDistancePoint(eye[2], eye[4]);
+    const d3 = calculateEuclideanDistancePoint(eye[0], eye[3]);
+    return (d1 + d2) / (2.0 * d3);
+}
+
+function calculateEuclideanDistancePoint(p1, p2) {
+    return Math.sqrt((p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2);
 }
 
 async function ensureFaceApiReady() {
